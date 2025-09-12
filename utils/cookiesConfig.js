@@ -1,0 +1,21 @@
+const cookiesConfig = [{
+  zipCode: 10008,
+  // 美国
+  domain: 'amazon.com',
+  // 这里需要注意, 每个站点的 cookie 都需要去对应站点获取, 例如: 美国 -> amazon.com, 加拿大 -> amazon.ca
+  cookie: 'session-id=145-7372270-8877416; session-id-time=2082787201l; i18n-prefs=USD; lc-main=en_US; ubid-main=134-0881753-6888449; aws-ubid-main=426-3867378-0843573; aws-target-data=%7B%22support%22%3A%221%22%7D; aws-target-visitor-id=1756790415508-142595.42_0; aws-userInfo-signed=eyJ0eXAiOiJKV1MiLCJrZXlSZWdpb24iOiJ1cy1lYXN0LTEiLCJhbGciOiJFUzM4NCIsImtpZCI6IjQ1YzkxMTJjLTEwZDMtNDk5NS04NzI2LWQ5ZWQ3ODA0MjYzNSJ9.eyJzdWIiOiIiLCJzaWduaW5UeXBlIjoiUFVCTElDIiwiaXNzIjoiaHR0cHM6XC9cL3NpZ25pbi5hd3MuYW1hem9uLmNvbVwvc2lnbmluIiwia2V5YmFzZSI6IkQ4V2RzUWJMd2dIRGJnUVA5SDVrSTJhWTFROVZvSDJVU09hdkxYYnRXOFU9IiwiYXJuIjoiYXJuOmF3czppYW06OjUzNjk0MTUzMzA0NTpyb290IiwidXNlcm5hbWUiOiJsaXpoZW5taWFvIn0.7Jlab6Dt44SjMyaY63-jHi17QmbgwKa1oV2kQSPtjuvaAFMVD8OIw_l3TDMK5O0rcN4dD7c830f-TnVUrY2yRvXpi__3lSj0LQpl_fAgsGswdZnSl3nhscV6twe2zt3b; aws-userInfo=%7B%22arn%22%3A%22arn%3Aaws%3Aiam%3A%3A536941533045%3Aroot%22%2C%22alias%22%3A%22%22%2C%22username%22%3A%22lizhenmiao%22%2C%22keybase%22%3A%22D8WdsQbLwgHDbgQP9H5kI2aY1Q9VoH2USOavLXbtW8U%5Cu003d%22%2C%22issuer%22%3A%22https%3A%2F%2Fsignin.aws.amazon.com%2Fsignin%22%2C%22signinType%22%3A%22PUBLIC%22%7D; noflush_awsccs_sid=4db2ef4b5e5c509a65dc54351940199de4fa15478a26e5f20048bf065a43fc3a; aws-target-static-id=1756791034439-159470; s_fid=73C96F43A4FA60D8-20446911D92AB2B3; s_vn=1788327034638%26vn%3D1; s_dslv=1756791050224; s_nr=1756791050225-New; AMCV_7742037254C95E840A4C98A6%40AdobeOrg=1585540135%7CMCIDTS%7C20334%7CMCMID%7C80785690814607686846045575199442433035%7CMCAID%7C343AFAADD50278F0-60000464A2F1DBB4%7CMCOPTOUT-1756798268s%7CNONE%7CvVersion%7C4.4.0%7CMCAAMLH-1757395868%7C9%7CMCAAMB-1757395868%7Cj8Odv6LonN4r3an7LhD3WZrU1bUpAkFkkiY1ncBR96t2PTI; kndctr_7742037254C95E840A4C98A6_AdobeOrg_consent=general=in; regStatus=registering; skin=noskin; kndctr_7742037254C95E840A4C98A6_AdobeOrg_identity=CiY4MDc4NTY5MDgxNDYwNzY4Njg0NjA0NTU3NTE5OTQ0MjQzMzAzNVIQCOy2oceQMxgBKgNPUjIwA_ABzOKwi5Mz; session-token=4H/kp/XPWqJEgxl0/Oid708Zzd21XX+A9TuPvT5U4IHxkCgv+yNc3++7Bq6f+aK6gOZMebPHePsLKJRsZIQD7GjkRWUgXkNNjuX/66WauxnGTif8Lcxv7iWgQOAhxZvhzaVGaB/VMnMOnkH7UhhSzydowzkkOuwCHXcoehXC5+0Ma4SGHzy2wEJmP/e1xUIdAH/b3M7iWAxRmMaMmfzqThFFfF0YPqFtoSnMPMrJgVzb7miZXdFFzHfJNUK+57s7egaJLwkUmYF0nvXhXEaCpGznZPc28OIbq2EUbD9pHN7YvUPDL4HGladucfTdGn/wc252UBnUi9rXBRKQo1Mg/ezr79+LSgTr; csm-hit=tb:BZ3Z9XF9R6E7BQKEH8QS+s-BZ3Z9XF9R6E7BQKEH8QS|1757571760759&t:1757571760759&adb:adblk_no; rxc=ALzTsF2ggf5f2oQOrsM'
+}, {
+  zipCode: 'W1B 4DG',
+  // 英国
+  domain: 'amazon.co.uk',
+  cookie: 'x-amz-captcha-1=1757647622971893; x-amz-captcha-2=KwcPh666p/uY1+Vepk0SAg==; session-id=524-1631986-7813768; session-id-time=2082787201l; i18n-prefs=GBP; lc-acbuk=en_GB; ubid-acbuk=522-9243226-7531148; session-token="zxMMTsYOLanHYH3NZwdyABU2eJHAW/Qvhk6Lf4Ojn/q/cSnpGczwp/Eq3+trYEsvMdOfTAPUoyNzjakV8VxCIEiVd/A9UaPOfh5HtJGQMJ30GiUTz+UWqRTyYGM2Ngq9SoPzOfl5ItGZdnoCO8XqZUw52WsiydWPy6lPma2GG5uOG2y5sSdT0uDtOfAdhvdHBfE7eeoO2va+e6y7vCepfrIUr3H2ArJa0fR8NSXQJxaRM00WGRxDHrAhrlduAH+a/DUVFitMOGv/V7zmr6MmdsBHUHpSgpfulVFTN+Zz++ZKeE8fb3gM9kaoJKYxOHHuOl0Adgp5DujicwOVLwnxmJkc4z0N8MB9WQ/Xk+1PTL8="; csm-hit=tb:ZPH9Z4NFJNNSP75PJPB3+s-32KJZ5F393700R7WF5DT|1757640463632&t:1757640463632&adb:adblk_no; rxc=ABYGk+Y4Kgk4cOdaV1E'
+}, {
+  zipCode: 'K1A 0A9',
+  // 加拿大
+  domain: 'amazon.ca',
+  cookie: 'csm-sid=473-5328030-6784468; x-amz-captcha-1=1757647739841093; x-amz-captcha-2=Om/7W2wxVPWKBAq2mFn2og==; session-id=136-1837375-0224660; session-id-time=2082787201l; i18n-prefs=CAD; lc-acbca=en_CA; ubid-acbca=132-5928466-9815763; session-token=x8swTTl3JD9o0sXP8fHc2POJtvW0ozpcT+eU04wYy49KWifCj0/eHECyQtepPVp4i0NpjqhrVeTDkd9uD04CczbuGZVeLiZjJBTvgyPh/DrmbqEy1M+e+Xg3P3VBLP5mQQlvNSvtuwQ/NIEY7UN0lwohDpLw8VrcskqWfutrqxez9soCyFo61HHgidDAp/bLPNCl/G8609QIoAjw0uW9eOmjQhR73mt1R5gUb4d7nQtOZhT/pB2Dmv3+VRYoI79iwkBsLM8qlbll66wtwh8H6SMCufpWI84fw8HYqOem3fYdpHfe8NZoGah2F9KuEESe/2WgBdPvMfd7SoYYfJtfvX0r+AIf9TLh; csm-hit=tb:ZXBHHCPG6YPJKV1K13N4+s-94BMJ6J5J24353H386FP|1757640575897&t:1757640575897&adb:adblk_no; rxc=AGwBC/LCIVBe/yApAfU'
+}]
+
+module.exports = {
+  cookiesConfig
+}

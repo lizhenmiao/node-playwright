@@ -1,0 +1,30 @@
+{
+  "name": "context-manager",
+  "version": "2.0.0",
+  "description": "A universal browser context manager with concurrent page control and proxy/cookie support",
+  "main": "ContextManager.js",
+  "scripts": {
+    "start": "node server.js",
+    "db:init": "node database/init.js",
+    "test:amazon": "node test_amazon.js"
+  },
+  "dependencies": {
+    "cheerio": "^1.1.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^5.1.0",
+    "mysql2": "^3.14.5",
+    "playwright": "^1.49.0",
+    "sequelize": "^6.37.7",
+    "user-agents": "^1.1.0"
+  },
+  "keywords": [
+    "browser",
+    "automation",
+    "concurrent",
+    "context",
+    "playwright"
+  ],
+  "author": "Cody",
+  "license": "MIT"
+}
