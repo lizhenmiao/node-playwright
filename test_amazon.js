@@ -3,6 +3,7 @@ const amazonScraper = require('./plugins/amazonScraper');
 const proxyConfig = require('./utils/proxyConfig');
 const CommonUtils = require('./utils/CommonUtils');
 const { closeConnection, isConnectionActive } = require('./database/connection');
+const { logger } = require('./utils/logger');
 
 (async () => {
   const manager = new ContextManager({
@@ -27,7 +28,7 @@ const { closeConnection, isConnectionActive } = require('./database/connection')
   }]
 
   try {
-    console.log('开始测试多并发任务...\n');
+    logger.info('开始测试多并发任务...\n');
     const startTime = Date.now();
 
     for (const item of keywords) {
@@ -45,7 +46,7 @@ const { closeConnection, isConnectionActive } = require('./database/connection')
 
     // 事件监听状态变化
     const statusHandler = (status) => {
-      // console.log(`[${new Date().toLocaleTimeString()}] 活跃Context: ${status.activeContexts}, 队列: ${status.queueLength}`);
+      // logger.info(`[${new Date().toLocaleTimeString()}] 活跃Context: ${status.activeContexts}, 队列: ${status.queueLength}`);
     };
     manager.on('statusChange', statusHandler);
 
@@ -53,7 +54,7 @@ const { closeConnection, isConnectionActive } = require('./database/connection')
     await new Promise((resolve) => {
       const completedHandler = () => {
         const executionTime = Date.now() - startTime;
-        console.log('耗时：', `${executionTime}ms - ${CommonUtils.formatMilliseconds(executionTime)}`);
+        logger.info('耗时：', `${executionTime}ms - ${CommonUtils.formatMilliseconds(executionTime)}`);
 
         // 移除所有事件监听器
         manager.removeListener('statusChange', statusHandler);
@@ -71,10 +72,10 @@ const { closeConnection, isConnectionActive } = require('./database/connection')
       await closeConnection();
     }
 
-    console.log('测试完成');
+    logger.info('测试完成');
 
   } catch (error) {
-    console.error('测试出错:', error);
+    logger.error('测试出错:', error);
 
     // 清理资源
     await manager.close();

@@ -5,6 +5,7 @@
 
 const { initConnection, getConnection, isConnectionActive } = require('./connection');
 const { defineModels } = require('./init');
+const { logger } = require('../utils/logger');
 
 // 模型缓存
 let models = null;
@@ -31,7 +32,7 @@ const TaskOps = {
       crawl_start_time: new Date(),
       zipCode
     });
-    // console.log(`📝 创建任务: ID=${task.id}, 关键词="${keyword}"`);
+    // logger.info(`📝 创建任务: ID=${task.id}, 关键词="${keyword}"`);
     return task;
   },
 
@@ -39,7 +40,7 @@ const TaskOps = {
   async start(taskId) {
     const { CrawlTask } = await getModels();
     await CrawlTask.update({ status: 'running' }, { where: { id: taskId } });
-    // console.log(`🚀 任务 ${taskId} 开始运行`);
+    // logger.info(`🚀 任务 ${taskId} 开始运行`);
   },
 
   // 完成任务
@@ -56,7 +57,7 @@ const TaskOps = {
       duration_seconds: durationSeconds
     }, { where: { id: taskId } });
 
-    // console.log(`✅ 任务 ${taskId} 完成: ${totalProducts}个产品, ${totalSponsored}个广告`);
+    // logger.info(`✅ 任务 ${taskId} 完成: ${totalProducts}个产品, ${totalSponsored}个广告`);
   },
 
   // 失败任务
@@ -71,7 +72,7 @@ const TaskOps = {
       error_message: errorMessage
     }, { where: { id: taskId } });
 
-    // console.log(`❌ 任务 ${taskId} 失败: ${errorMessage}`);
+    // logger.info(`❌ 任务 ${taskId} 失败: ${errorMessage}`);
   }
 };
 
@@ -116,7 +117,7 @@ const ProductOps = {
     }));
 
     await ProductRanking.bulkCreate(productData);
-    // console.log(`💾 保存了 ${productData.length} 个产品数据`);
+    // logger.info(`💾 保存了 ${productData.length} 个产品数据`);
   }
 };
 

@@ -14,9 +14,12 @@
     "dotenv": "^16.4.5",
     "express": "^5.1.0",
     "mysql2": "^3.14.5",
+    "node-cron": "^4.2.1",
     "playwright": "^1.49.0",
     "sequelize": "^6.37.7",
-    "user-agents": "^1.1.0"
+    "user-agents": "^1.1.0",
+    "winston": "^3.17.0",
+    "winston-daily-rotate-file": "^5.0.0"
   },
   "keywords": [
     "browser",

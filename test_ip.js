@@ -1,6 +1,7 @@
 const ContextManager = require('./utils/ContextManager');
 const ipCheck = require('./plugins/ipCheck');
 const proxyConfig = require('./utils/proxyConfig');
+const { logger } = require('./utils/logger');
 
 (async () => {
   const manager = new ContextManager({
@@ -11,7 +12,7 @@ const proxyConfig = require('./utils/proxyConfig');
   });
 
   try {
-    console.log('开始测试多并发任务...\n');
+    logger.info('开始测试多并发任务...\n');
 
     // 创建5个任务测试并发控制
     for (let i = 1; i <= 5; i++) {
@@ -22,7 +23,7 @@ const proxyConfig = require('./utils/proxyConfig');
 
     // 事件监听状态变化
     const statusHandler = (status) => {
-      console.log(`[${new Date().toLocaleTimeString()}] 活跃Context: ${status.activeContexts}, 队列: ${status.queueLength}`);
+      logger.info(`[${new Date().toLocaleTimeString()}] 活跃Context: ${status.activeContexts}, 队列: ${status.queueLength}`);
     };
     manager.on('statusChange', statusHandler);
 
@@ -38,10 +39,10 @@ const proxyConfig = require('./utils/proxyConfig');
     });
 
     await manager.close();
-    console.log('测试完成');
+    logger.info('测试完成');
 
   } catch (error) {
-    console.error('测试出错:', error);
+    logger.error('测试出错:', error);
     await manager.close();
   }
 })();

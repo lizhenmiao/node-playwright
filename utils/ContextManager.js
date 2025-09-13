@@ -2,6 +2,7 @@ const { chromium, firefox, webkit } = require('playwright');
 const EventEmitter = require('events');
 const CommonUtils = require('./CommonUtils');
 const { cookiesConfig } = require('./cookiesConfig');
+const { logger } = require('./logger');
 
 /**
  * 基于 Playwright 的浏览器上下文管理器
@@ -94,7 +95,7 @@ class ContextManager extends EventEmitter {
       }
 
       this.browser = await browserEngine.launch(this.browserOptions);
-      console.log(`${this.browserType} browser launched successfully`);
+      logger.info(`${this.browserType} browser launched successfully`);
     } catch (error) {
       // 创建失败时重置状态
       this.browser = null;
@@ -286,7 +287,7 @@ class ContextManager extends EventEmitter {
     // 使用 setImmediate 延迟检查，避免并发完成时的重复调用
     setImmediate(() => {
       if (this.taskQueue.length === 0 && this.activeContexts.size === 0) {
-        console.log('\n=== 所有任务完成 ===');
+        logger.info('\n=== 所有任务完成 ===');
         this.emit('completed');
       }
     });
@@ -336,7 +337,7 @@ class ContextManager extends EventEmitter {
       task.resolve(result);
 
     } catch (error) {
-      console.error(`Task ${task.taskId} execution failed:`, error.message);
+      logger.error(`Task ${task.taskId} execution failed:`, error.message);
 
       // 自动失败处理：如果插件没有调用 failed()，自动处理失败（不重试）
       if (!task.completed) {
@@ -352,7 +353,7 @@ class ContextManager extends EventEmitter {
   async failedTask(task, page, error, canRetry = false) {
     if (task.completed) return; // 防止重复处理
 
-    console.error(`Task ${task.taskId} failed (attempt ${task.retryCount + 1}):`, error.message);
+    logger.error(`Task ${task.taskId} failed (attempt ${task.retryCount + 1}):`, error.message);
 
     // 关闭当前的 page 和 context，但不从 activeContexts 中移除 taskId
     await this.cleanupTaskResources(task, page, false)
@@ -361,7 +362,7 @@ class ContextManager extends EventEmitter {
     if (canRetry) {
       task.retryCount++;
 
-      console.log(`Task ${task.taskId} will retry (${task.retryCount})`);
+      logger.info(`Task ${task.taskId} will retry (${task.retryCount})`);
 
       // 重置一些状态，但保持 taskId 在 activeContexts 中
       task.completed = false;
@@ -383,7 +384,7 @@ class ContextManager extends EventEmitter {
       finalError.originalError = error;
       finalError.retryCount = task.retryCount;
 
-      console.error(`Task ${task.taskId} final failure:`, finalError.message);
+      logger.error(`Task ${task.taskId} final failure:`, finalError.message);
       task.reject(finalError);
 
       // 发送状态更新事件
@@ -407,7 +408,7 @@ class ContextManager extends EventEmitter {
       try {
         await page.close();
       } catch (error) {
-        console.warn(`Failed to close page for task ${task.taskId}:`, error.message);
+        logger.warn(`Failed to close page for task ${task.taskId}:`, error.message);
       }
     }
 
@@ -416,7 +417,7 @@ class ContextManager extends EventEmitter {
       try {
         await task.context.close();
       } catch (error) {
-        console.warn(`Failed to close context for task ${task.taskId}:`, error.message);
+        logger.warn(`Failed to close context for task ${task.taskId}:`, error.message);
       }
     }
 
@@ -431,7 +432,7 @@ class ContextManager extends EventEmitter {
     if (task.completed) return; // 防止重复完成
     task.completed = true;
 
-    // console.log(`Task ${task.taskId}: Completed successfully`);
+    // logger.info(`Task ${task.taskId}: Completed successfully`);
 
     // 清理资源
     await this.cleanupTaskResources(task, page);
@@ -453,7 +454,7 @@ class ContextManager extends EventEmitter {
    * 确保优雅关闭，避免僵尸进程
    */
   async close() {
-    console.log('Closing context manager...');
+    logger.info('Closing context manager...');
 
     // 清空任务队列，拒绝所有等待的任务
     this.taskQueue.forEach(task => {
@@ -484,7 +485,7 @@ class ContextManager extends EventEmitter {
     // 清理所有事件监听器，防止内存泄漏
     this.removeAllListeners();
 
-    console.log(`${this.browserType} browser closed`);
+    logger.info(`${this.browserType} browser closed`);
   }
 }
 

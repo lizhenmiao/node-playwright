@@ -5,6 +5,7 @@
 
 const { DataTypes } = require('sequelize');
 const { initConnection, closeConnection } = require('./connection');
+const { logger } = require('../utils/logger');
 
 // 定义模型函数
 function defineModels(sequelize) {
@@ -250,11 +251,11 @@ async function initDatabase() {
 
     // 创建表结构（强制重建）
     await sequelize.sync({ force: true });
-    console.log('✅ 数据库表创建完成');
+    logger.info('✅ 数据库表创建完成');
 
     return { sequelize, CrawlTask, ProductRanking };
   } catch (error) {
-    console.error('❌ 数据库初始化失败:', error);
+    logger.error('❌ 数据库初始化失败:', error);
     throw error;
   }
 }
@@ -262,7 +263,7 @@ async function initDatabase() {
 // 如果直接运行此文件
 if (require.main === module) {
   initDatabase().then(async () => {
-    console.log('🎉 数据库初始化完成！');
+    logger.info('🎉 数据库初始化完成！');
     await closeConnection();
     process.exit(0);
   }).catch(async () => {

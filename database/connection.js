@@ -4,6 +4,7 @@
  */
 
 const { Sequelize } = require('sequelize');
+const { logger } = require('../utils/logger');
 
 // 加载环境变量
 require('dotenv').config();
@@ -17,8 +18,9 @@ const config = {
   password: process.env.DB_PASSWORD || '',
   dialect: 'mysql',
   timezone: '+08:00',
-  // logging: process.env.NODE_ENV === 'development' ? console.log : false,
-  logging: false,
+  logging: (sql, timing) => {
+    logger.dbQuery(sql, timing);
+  },
 
   // 连接池配置
   pool: {
@@ -93,25 +95,25 @@ async function performInit() {
   try {
     await sequelize.authenticate();
     isConnected = true;
-    console.log('✅ 数据库连接池初始化成功');
+    logger.info('✅ 数据库连接池初始化成功');
 
     // 监听连接事件
     sequelize.addHook('beforeConnect', () => {
-      console.log('🔗 正在建立数据库连接...');
+      logger.info('🔗 正在建立数据库连接...');
     });
 
     sequelize.addHook('afterConnect', () => {
-      console.log('✅ 数据库连接建立成功');
+      logger.info('✅ 数据库连接建立成功');
     });
 
     sequelize.addHook('beforeDisconnect', () => {
-      console.log('🔌 正在断开数据库连接...');
+      logger.info('🔌 正在断开数据库连接...');
     });
 
     return sequelize;
   } catch (error) {
     isConnected = false;
-    console.error('❌ 数据库连接失败:', error.message);
+    logger.error('❌ 数据库连接失败:', error.message);
     throw error;
   }
 }
@@ -133,9 +135,9 @@ async function closeConnection() {
   try {
     await sequelize.close();
     isConnected = false;
-    console.log('✅ 数据库连接池已关闭');
+    logger.info('✅ 数据库连接池已关闭');
   } catch (error) {
-    console.error('❌ 关闭数据库连接失败:', error.message);
+    logger.error('❌ 关闭数据库连接失败:', error.message);
     throw error;
   }
 }
@@ -156,22 +158,22 @@ async function reconnect() {
       await closeConnection();
     }
     await initConnection();
-    console.log('✅ 数据库重连成功');
+    logger.info('✅ 数据库重连成功');
   } catch (error) {
-    console.error('❌ 数据库重连失败:', error.message);
+    logger.error('❌ 数据库重连失败:', error.message);
     throw error;
   }
 }
 
 // 进程退出时自动关闭连接
 process.on('SIGINT', async () => {
-  console.log('\n🔄 正在关闭数据库连接...');
+  logger.info('\n🔄 正在关闭数据库连接...');
   await closeConnection();
   process.exit(0);
 });
 
 process.on('SIGTERM', async () => {
-  console.log('\n🔄 正在关闭数据库连接...');
+  logger.info('\n🔄 正在关闭数据库连接...');
   await closeConnection();
   process.exit(0);
 });

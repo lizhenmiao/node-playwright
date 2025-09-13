@@ -2,6 +2,7 @@
  * 通用工具函数 - Sleep 延迟等待
  * 提供各种延迟等待的方法
  */
+const { logger } = require('./logger');
 
 /**
  * 基础 sleep 函数
@@ -58,14 +59,14 @@ function randomSleepSeconds(minSeconds, maxSeconds) {
  * @returns {Promise} Promise 对象
  */
 async function sleepWithProgress(seconds, message = '等待中') {
-  console.log(`${message}: ${seconds}秒`);
+  logger.info(`${message}: ${seconds}秒`);
   
   for (let i = seconds; i > 0; i--) {
     process.stdout.write(`\r${message}: ${i}秒`);
     await sleep(1000);
   }
   
-  console.log(`\r${message}: 完成!`);
+  logger.info(`\r${message}: 完成!`);
 }
 
 /**

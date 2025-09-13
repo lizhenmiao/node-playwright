@@ -5,3 +5,4 @@ package-lock.json
 .env
 html_cache/
 html_files/
+logs/

@@ -3,6 +3,7 @@ const CommonUtils = require('../utils/CommonUtils');
 const { TaskOps, ProductOps } = require('../database/operations');
 const { initConnection, isConnectionActive } = require('../database/connection');
 const fs = require('fs').promises;
+const { logger } = require('../utils/logger');
 
 // 配置参数 - 增加超时时间以应对网络不稳定
 const maxRetries = 30;
@@ -31,16 +32,16 @@ async function amazonScraper(page, context, pluginOptions = {}) {
 
   let crawlTaskId = null;
 
-  // console.log(`任务 ${context.taskId}: 开始Amazon搜索任务`);
-  // console.log(`- URL: ${url}`);
-  // console.log(`- 关键词: ${keyword}`);
-  // console.log(`- 最大页数: ${maxPage}`);
-  // console.log(`- 重试次数: ${context.retryCount}`);
+  // logger.info(`任务 ${context.taskId}: 开始Amazon搜索任务`);
+  // logger.info(`- URL: ${url}`);
+  // logger.info(`- 关键词: ${keyword}`);
+  // logger.info(`- 最大页数: ${maxPage}`);
+  // logger.info(`- 重试次数: ${context.retryCount}`);
 
   // 验证参数
   if (!url || !keyword) {
     const error = new Error('缺少必要参数: url 和 keyword 是必需的');
-    // console.log(`任务 ${context.taskId}: ${error.message}`);
+    // logger.info(`任务 ${context.taskId}: ${error.message}`);
     context.failed(error, false);
     return;
   }
@@ -59,14 +60,14 @@ async function amazonScraper(page, context, pluginOptions = {}) {
       crawlTaskId = task.id;
       await TaskOps.start(crawlTaskId);
     } catch (dbError) {
-      console.error(`任务 ${context.taskId}: 数据库操作失败 - ${dbError.message}`);
+      logger.error(`任务 ${context.taskId}: 数据库操作失败 - ${dbError.message}`);
     }
 
     // 存储所有页面的结果
     const allResults = [];
 
     // 初始化：打开起始页面
-    // console.log(`任务 ${context.taskId}: 打开起始页面...`);
+    // logger.info(`任务 ${context.taskId}: 打开起始页面...`);
 
     // 使用更宽松的等待策略，不等待networkidle
     await page.goto(url, {
@@ -82,7 +83,7 @@ async function amazonScraper(page, context, pluginOptions = {}) {
 
     // 循环处理每一页
     for (let currentPage = 1; currentPage <= maxPage; currentPage++) {
-      // console.log(`任务 ${context.taskId}: 开始处理第 ${currentPage} 页`);
+      // logger.info(`任务 ${context.taskId}: 开始处理第 ${currentPage} 页`);
 
       // 等待搜索结果加载
       await waitForSearchResults(page, context);
@@ -95,7 +96,7 @@ async function amazonScraper(page, context, pluginOptions = {}) {
 
       if (pageResults) {
         allResults.push(pageResults);
-        // console.log(`任务 ${context.taskId}: 第 ${currentPage} 页数据提取成功，包含 ${pageResults.totalProducts} 个产品`);
+        // logger.info(`任务 ${context.taskId}: 第 ${currentPage} 页数据提取成功，包含 ${pageResults.totalProducts} 个产品`);
 
         // 存储 html 到文件
         await fs.writeFile(`./html_files/${context.taskId}-${zipCode.replace(/\s+/g, '_')}-${currentPage}-${keyword.replace(/\s+/g, '_')}-${Date.now()}.html`, pageResults.html);
@@ -105,7 +106,7 @@ async function amazonScraper(page, context, pluginOptions = {}) {
       if (currentPage < maxPage) {
         const hasNextPage = await goToNextPage(page, context);
         if (!hasNextPage) {
-          // console.log(`任务 ${context.taskId}: 没有更多页面，停止翻页`);
+          // logger.info(`任务 ${context.taskId}: 没有更多页面，停止翻页`);
           break;
         }
       }
@@ -117,7 +118,7 @@ async function amazonScraper(page, context, pluginOptions = {}) {
     const totalOrganic = allResults.reduce((sum, result) => sum + (result.organicCount || 0), 0);
 
     const executionTime = Date.now() - startTime;
-    console.log(`任务 ${context.taskId}: 任务完成，共提取 ${allResults.length} 页，总计 ${totalProducts} 个产品（SP广告: ${totalSponsored}个，自然排名: ${totalOrganic}个），耗时：${executionTime}ms - ${CommonUtils.formatMilliseconds(executionTime)}，重试次数: ${context.retryCount}`);
+    logger.info(`任务 ${context.taskId}: 任务完成，共提取 ${allResults.length} 页，总计 ${totalProducts} 个产品（SP广告: ${totalSponsored}个，自然排名: ${totalOrganic}个），耗时：${executionTime}ms - ${CommonUtils.formatMilliseconds(executionTime)}，重试次数: ${context.retryCount}`);
 
     const result = {
       success: true,
@@ -144,28 +145,28 @@ async function amazonScraper(page, context, pluginOptions = {}) {
           await ProductOps.batchInsert(allProducts, crawlTaskId);
         }
       } catch (dbError) {
-        console.error(`任务 ${context.taskId}: 保存完成状态失败 - ${dbError.message}`);
+        logger.error(`任务 ${context.taskId}: 保存完成状态失败 - ${dbError.message}`);
       }
     }
 
     context.complete(result);
   } catch (error) {
-    // console.log(`任务 ${context.taskId}: 任务失败 - ${error.message}`);
+    // logger.info(`任务 ${context.taskId}: 任务失败 - ${error.message}`);
 
     // 判断是否可以重试
     const canRetry = context.retryCount < maxRetries;
 
     if (canRetry) {
-      // console.log(`任务 ${context.taskId}: 将重试 (${context.retryCount + 1}/${maxRetries})`);
+      // logger.info(`任务 ${context.taskId}: 将重试 (${context.retryCount + 1}/${maxRetries})`);
     } else {
-      // console.log(`任务 ${context.taskId}: 不可重试或已达到最大重试次数`);
+      // logger.info(`任务 ${context.taskId}: 不可重试或已达到最大重试次数`);
 
       // 保存任务失败状态到数据库
       if (crawlTaskId) {
         try {
           await TaskOps.fail(crawlTaskId, error.message);
         } catch (dbError) {
-          console.error(`任务 ${context.taskId}: 保存失败状态失败 - ${dbError.message}`);
+          logger.error(`任务 ${context.taskId}: 保存失败状态失败 - ${dbError.message}`);
         }
       }
     }
@@ -178,33 +179,33 @@ async function amazonScraper(page, context, pluginOptions = {}) {
  * 处理验证码
  */
 async function handleCaptcha(page, context) {
-  // console.log(`任务 ${context.taskId}: 检查验证码...`);
+  // logger.info(`任务 ${context.taskId}: 检查验证码...`);
 
   try {
     // 检查是否存在验证码表单
     const captchaForm = await page.$('form[action="/errors/validateCaptcha"]');
 
     if (captchaForm) {
-      // console.log(`任务 ${context.taskId}: 发现验证码，尝试点击按钮`);
+      // logger.info(`任务 ${context.taskId}: 发现验证码，尝试点击按钮`);
 
       // 查找按钮并点击
       const button = await captchaForm.$('button, input[type="submit"]');
       if (button) {
         await button.click();
-        // console.log(`任务 ${context.taskId}: 已点击验证码按钮，等待页面刷新...`);
+        // logger.info(`任务 ${context.taskId}: 已点击验证码按钮，等待页面刷新...`);
 
         // 等待页面刷新
         await page.waitForLoadState('domcontentloaded', { timeout: pageLoadTimeout });
 
-        // console.log(`任务 ${context.taskId}: 验证码页面刷新完成`);
+        // logger.info(`任务 ${context.taskId}: 验证码页面刷新完成`);
       } else {
-        // console.log(`任务 ${context.taskId}: 验证码表单中未找到按钮`);
+        // logger.info(`任务 ${context.taskId}: 验证码表单中未找到按钮`);
       }
     } else {
-      // console.log(`任务 ${context.taskId}: 未发现验证码`);
+      // logger.info(`任务 ${context.taskId}: 未发现验证码`);
     }
   } catch (error) {
-    // console.log(`任务 ${context.taskId}: 验证码处理出错: ${error.message}`);
+    // logger.info(`任务 ${context.taskId}: 验证码处理出错: ${error.message}`);
     // 验证码处理失败不抛出错误，继续执行
   }
 }
@@ -213,7 +214,7 @@ async function handleCaptcha(page, context) {
  * 执行搜索
  */
 async function performSearch(page, context, keyword) {
-  // console.log(`任务 ${context.taskId}: 开始搜索关键词: ${keyword}`);
+  // logger.info(`任务 ${context.taskId}: 开始搜索关键词: ${keyword}`);
 
   // 查找搜索框
   const searchSelectors = [
@@ -225,7 +226,7 @@ async function performSearch(page, context, keyword) {
   for (const selector of searchSelectors) {
     searchBox = await page.$(selector);
     if (searchBox) {
-      // console.log(`任务 ${context.taskId}: 找到搜索框: ${selector}`);
+      // logger.info(`任务 ${context.taskId}: 找到搜索框: ${selector}`);
       break;
     }
   }
@@ -249,7 +250,7 @@ async function performSearch(page, context, keyword) {
   for (const selector of searchButtonSelectors) {
     searchButton = await page.$(selector);
     if (searchButton) {
-      // console.log(`任务 ${context.taskId}: 找到搜索按钮: ${selector}`);
+      // logger.info(`任务 ${context.taskId}: 找到搜索按钮: ${selector}`);
       break;
     }
   }
@@ -260,23 +261,23 @@ async function performSearch(page, context, keyword) {
 
   // 点击搜索
   await searchButton.click();
-  // console.log(`任务 ${context.taskId}: 已点击搜索按钮，等待页面跳转...`);
+  // logger.info(`任务 ${context.taskId}: 已点击搜索按钮，等待页面跳转...`);
 
   // 等待页面跳转到搜索结果页 - 只等待DOM加载
   try {
     await page.waitForLoadState('domcontentloaded', { timeout: searchTimeout });
   } catch (loadError) {
-    // console.log(`任务 ${context.taskId}: 页面加载超时，尝试继续...`);
+    // logger.info(`任务 ${context.taskId}: 页面加载超时，尝试继续...`);
   }
 
-  // console.log(`任务 ${context.taskId}: 搜索完成，已跳转到搜索结果页`);
+  // logger.info(`任务 ${context.taskId}: 搜索完成，已跳转到搜索结果页`);
 }
 
 /**
  * 等待搜索结果加载
  */
 async function waitForSearchResults(page, context) {
-  // console.log(`任务 ${context.taskId}: 等待搜索结果加载...`);
+  // logger.info(`任务 ${context.taskId}: 等待搜索结果加载...`);
 
   try {
     // 直接等待产品项出现，不管占位符是否还存在
@@ -285,10 +286,10 @@ async function waitForSearchResults(page, context) {
       return products.length > 0;
     }, { timeout: pageLoadTimeout });
 
-    // console.log(`任务 ${context.taskId}: 搜索结果加载完成，发现产品`);
+    // logger.info(`任务 ${context.taskId}: 搜索结果加载完成，发现产品`);
 
   } catch (error) {
-    // console.log(`任务 ${context.taskId}: 等待搜索结果超时: ${error.message}`);
+    // logger.info(`任务 ${context.taskId}: 等待搜索结果超时: ${error.message}`);
     throw new Error('搜索结果加载超时');
   }
 }
@@ -297,7 +298,7 @@ async function waitForSearchResults(page, context) {
  * 滚动页面到底部
  */
 async function scrollToBottom(page, context) {
-  // console.log(`任务 ${context.taskId}: 开始滚动页面到底部...`);
+  // logger.info(`任务 ${context.taskId}: 开始滚动页面到底部...`);
 
   try {
     await page.evaluate(async () => {
@@ -324,10 +325,10 @@ async function scrollToBottom(page, context) {
       window.scrollTo(0, document.body.scrollHeight);
     });
 
-    // console.log(`任务 ${context.taskId}: 页面滚动完成`);
+    // logger.info(`任务 ${context.taskId}: 页面滚动完成`);
 
   } catch (error) {
-    // console.log(`任务 ${context.taskId}: 页面滚动出错: ${error.message}`);
+    // logger.info(`任务 ${context.taskId}: 页面滚动出错: ${error.message}`);
     // 滚动失败不抛出错误，继续执行
   }
 }
@@ -336,7 +337,7 @@ async function scrollToBottom(page, context) {
  * 提取页面数据
  */
 async function extractPageData(page, context, keyword, url, pageNumber) {
-  // console.log(`任务 ${context.taskId}: 开始提取第 ${pageNumber} 页数据...`);
+  // logger.info(`任务 ${context.taskId}: 开始提取第 ${pageNumber} 页数据...`);
 
   let refreshCount = 0;
 
@@ -353,9 +354,9 @@ async function extractPageData(page, context, keyword, url, pageNumber) {
 
       if (hasSPAds || refreshCount >= maxRetries) {
         if (hasSPAds) {
-          // console.log(`任务 ${context.taskId}: 第 ${pageNumber} 页发现SP广告信息`);
+          // logger.info(`任务 ${context.taskId}: 第 ${pageNumber} 页发现SP广告信息`);
         } else {
-          // console.log(`任务 ${context.taskId}: 第 ${pageNumber} 页未发现SP广告信息，但已达到最大重试次数，继续执行`);
+          // logger.info(`任务 ${context.taskId}: 第 ${pageNumber} 页未发现SP广告信息，但已达到最大重试次数，继续执行`);
         }
 
         // 为所有产品添加元数据
@@ -371,7 +372,7 @@ async function extractPageData(page, context, keyword, url, pageNumber) {
         const sponsoredCount = enrichedProducts.filter(p => p.position_type === 'sp').length;
         const organicCount = enrichedProducts.filter(p => p.position_type === 'organic').length;
 
-        // console.log(`任务 ${context.taskId}: 第 ${pageNumber} 页数据提取成功，共 ${enrichedProducts.length} 个产品（SP广告: ${sponsoredCount}个，自然排名: ${organicCount}个）`);
+        // logger.info(`任务 ${context.taskId}: 第 ${pageNumber} 页数据提取成功，共 ${enrichedProducts.length} 个产品（SP广告: ${sponsoredCount}个，自然排名: ${organicCount}个）`);
 
         return {
           pageNumber: pageNumber,
@@ -386,13 +387,13 @@ async function extractPageData(page, context, keyword, url, pageNumber) {
         };
       } else {
         refreshCount++;
-        // console.log(`任务 ${context.taskId}: 第 ${pageNumber} 页未发现SP广告信息，刷新页面重试 (${refreshCount}/${maxRetries})`);
+        // logger.info(`任务 ${context.taskId}: 第 ${pageNumber} 页未发现SP广告信息，刷新页面重试 (${refreshCount}/${maxRetries})`);
 
         // 刷新页面 - 只等待DOM内容加载
         try {
           await page.reload({ waitUntil: 'domcontentloaded', timeout: 60000 });
         } catch (reloadError) {
-          // console.log(`任务 ${context.taskId}: 页面刷新失败，尝试继续: ${reloadError.message}`);
+          // logger.info(`任务 ${context.taskId}: 页面刷新失败，尝试继续: ${reloadError.message}`);
         }
 
         // 重新等待搜索结果
@@ -402,20 +403,20 @@ async function extractPageData(page, context, keyword, url, pageNumber) {
         await scrollToBottom(page, context);
       }
     } catch (error) {
-      // console.log(`任务 ${context.taskId}: 第 ${pageNumber} 页数据提取失败: ${error.message}`);
+      // logger.info(`任务 ${context.taskId}: 第 ${pageNumber} 页数据提取失败: ${error.message}`);
 
       if (refreshCount >= maxRetries) {
         throw error;
       }
 
       refreshCount++;
-      // console.log(`任务 ${context.taskId}: 刷新页面重试 (${refreshCount}/${maxRetries})`);
+      // logger.info(`任务 ${context.taskId}: 刷新页面重试 (${refreshCount}/${maxRetries})`);
 
       // 刷新页面 - 只等待DOM内容加载
       try {
         await page.reload({ waitUntil: 'domcontentloaded', timeout: 60000 });
       } catch (reloadError) {
-        // console.log(`任务 ${context.taskId}: 页面刷新失败，尝试继续: ${reloadError.message}`);
+        // logger.info(`任务 ${context.taskId}: 页面刷新失败，尝试继续: ${reloadError.message}`);
       }
 
       await waitForSearchResults(page, context);
@@ -430,14 +431,14 @@ async function extractPageData(page, context, keyword, url, pageNumber) {
  * 翻到下一页
  */
 async function goToNextPage(page, context) {
-  // console.log(`任务 ${context.taskId}: 尝试翻到下一页...`);
+  // logger.info(`任务 ${context.taskId}: 尝试翻到下一页...`);
 
   try {
     // 查找下一页按钮
     const nextButton = await page.$('.s-pagination-next');
 
     if (!nextButton) {
-      // console.log(`任务 ${context.taskId}: 未找到下一页按钮`);
+      // logger.info(`任务 ${context.taskId}: 未找到下一页按钮`);
       return false;
     }
 
@@ -447,27 +448,27 @@ async function goToNextPage(page, context) {
     );
 
     if (isDisabled) {
-      // console.log(`任务 ${context.taskId}: 下一页按钮已禁用，已到最后一页`);
+      // logger.info(`任务 ${context.taskId}: 下一页按钮已禁用，已到最后一页`);
       return false;
     }
 
     // 点击下一页
     await nextButton.click();
-    // console.log(`任务 ${context.taskId}: 已点击下一页按钮，等待页面加载...`);
+    // logger.info(`任务 ${context.taskId}: 已点击下一页按钮，等待页面加载...`);
 
     // 使用更简单的等待策略
     try {
       // 只等待 DOM 内容加载
       await page.waitForLoadState('domcontentloaded', { timeout: 60000 });
     } catch (loadError) {
-      // console.log(`任务 ${context.taskId}: 翻页后页面加载超时，尝试继续...`);
+      // logger.info(`任务 ${context.taskId}: 翻页后页面加载超时，尝试继续...`);
     }
 
-    // console.log(`任务 ${context.taskId}: 下一页加载完成`);
+    // logger.info(`任务 ${context.taskId}: 下一页加载完成`);
     return true;
 
   } catch (error) {
-    // console.log(`任务 ${context.taskId}: 翻页失败: ${error.message}`);
+    // logger.info(`任务 ${context.taskId}: 翻页失败: ${error.message}`);
     return false;
   }
 }

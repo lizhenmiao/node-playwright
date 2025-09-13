@@ -1,11 +1,14 @@
 /**
  * Amazon 产品数据提取 API 服务器
  * 简化版本 - 固定读取HTML文件返回所有产品数据
+ * 集成日志管理和定时任务功能
  */
 
 const express = require('express');
 const cors = require('cors');
 const { extractAmazonProductsFromHTML } = require('./utils/amazonExtractor');
+const { logger } = require('./utils/logger');
+const cron = require('node-cron');
 const fs = require('fs').promises;
 const path = require('path');
 
@@ -48,9 +51,8 @@ app.get('/api/products', async (req, res) => {
       message: `成功提取 ${products.length} 个产品数据`,
       timestamp: new Date().toISOString()
     });
-
   } catch (error) {
-    console.error('❌ 数据提取失败:', error);
+    logger.error('❌ 数据提取失败:', error);
 
     res.status(500).json({
       success: false,
@@ -82,14 +84,47 @@ app.use((req, res) => {
   });
 });
 
+/**
+ * 初始化定时任务
+ */
+function initScheduledTasks() {
+  // 每小时的第0分钟和第30分钟执行任务
+  cron.schedule('0,30 * * * *', () => {
+    logger.info('定时任务执行中...');
+  });
+
+  logger.info('定时任务初始化完成');
+}
+
+/**
+ * 优雅关闭处理
+ */
+function setupGracefulShutdown() {
+  const shutdown = async (signal) => {
+    await logger.info(`收到 ${signal} 信号，开始优雅关闭`);
+
+    // 关闭服务器
+    process.exit(0);
+  };
+
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
+}
+
 // 启动服务器
 app.listen(PORT, () => {
-  console.log('🚀 Amazon产品数据提取API已启动!');
-  console.log(`📡 服务地址: http://localhost:${PORT}`);
-  console.log('');
-  console.log('💡 使用方法:');
-  console.log(`   curl http://localhost:${PORT}/api/products`);
-  console.log(`   或在浏览器访问: http://localhost:${PORT}/api/products`);
+  logger.info('🚀 Amazon产品数据提取API已启动!');
+  logger.info(`📡 服务地址: http://localhost:${PORT}`);
+  logger.info('');
+  logger.info('💡 使用方法:');
+  logger.info(`   curl http://localhost:${PORT}/api/products`);
+  logger.info(`   或在浏览器访问: http://localhost:${PORT}/health`);
+
+  // 初始化定时任务
+  initScheduledTasks();
+
+  // 设置优雅关闭
+  setupGracefulShutdown();
 });
 
 module.exports = app;
