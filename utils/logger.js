@@ -78,6 +78,37 @@ const dbLogger = winston.createLogger({
   ]
 });
 
+// 创建只输出到控制台的 logger
+const consoleOnlyLogger = winston.createLogger({
+  level: process.env.LOG_LEVEL || 'info',
+  format: winston.format.combine(
+    winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+    winston.format.printf(({ timestamp, level, message }) => {
+      return `[${timestamp}] [${level.toUpperCase()}] ${message}`;
+    })
+  ),
+  transports: [
+    // 只有控制台输出
+    new winston.transports.Console()
+  ]
+});
+
+// 创建只输出到文件的 logger
+const fileOnlyLogger = winston.createLogger({
+  level: process.env.LOG_LEVEL || 'info',
+  format: logFormat,
+  transports: [
+    // 只有文件输出
+    new DailyRotateFile({
+      filename: path.join('logs', '%DATE%.log'),
+      datePattern: 'YYYY-MM-DD',
+      maxSize: '20m',
+      maxFiles: '30d',
+      zippedArchive: true
+    })
+  ]
+});
+
 // 工具函数：处理多参数
 function formatArgs(...args) {
   if (args.length === 1) {
@@ -140,6 +171,18 @@ const logger = {
     }
     const message = `${sql}${timingStr}`;
     this.sql(message);
+  },
+
+  // 只在终端显示
+  console(...args) {
+    const message = formatArgs(...args);
+    consoleOnlyLogger.info(message);
+  },
+
+  // 只在日志文件显示
+  log(...args) {
+    const message = formatArgs(...args);
+    fileOnlyLogger.info(message);
   }
 };
 

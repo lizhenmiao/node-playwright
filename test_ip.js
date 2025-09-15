@@ -1,4 +1,4 @@
-const ContextManager = require('./utils/ContextManager');
+const ContextManager = require('./utils/contextManager');
 const ipCheck = require('./plugins/ipCheck');
 const proxyConfig = require('./utils/proxyConfig');
 const { logger } = require('./utils/logger');
@@ -12,7 +12,7 @@ const { logger } = require('./utils/logger');
   });
 
   try {
-    logger.info('开始测试多并发任务...\n');
+    logger.info('开始测试多并发任务...');
 
     // 创建5个任务测试并发控制
     for (let i = 1; i <= 5; i++) {

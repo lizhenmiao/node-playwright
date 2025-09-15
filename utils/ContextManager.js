@@ -1,6 +1,6 @@
 const { chromium, firefox, webkit } = require('playwright');
 const EventEmitter = require('events');
-const CommonUtils = require('./CommonUtils');
+const CommonUtils = require('./commonUtils');
 const { cookiesConfig } = require('./cookiesConfig');
 const { logger } = require('./logger');
 
@@ -20,6 +20,7 @@ class ContextManager extends EventEmitter {
     this.taskQueue = []; // 任务队列
     this.isProcessing = false; // 是否正在处理队列
     this.taskIdCounter = 0; // 任务ID计数器
+    this.taskResults = []; // 收集所有任务的结果
 
     // 浏览器类型选择 (Playwright 支持三种浏览器引擎)
     this.browserType = options.browserType || 'chromium'; // 'chromium', 'firefox', 'webkit'
@@ -288,7 +289,8 @@ class ContextManager extends EventEmitter {
     setImmediate(() => {
       if (this.taskQueue.length === 0 && this.activeContexts.size === 0) {
         logger.info('\n=== 所有任务完成 ===');
-        this.emit('completed');
+        // 将所有任务结果传递给completed事件
+        this.emit('completed', this.taskResults);
       }
     });
   }
@@ -317,7 +319,11 @@ class ContextManager extends EventEmitter {
         taskId: task.taskId,
         context: context,
         retryCount: task.retryCount,
-        complete: () => {
+        complete: (result) => {
+          // 如果插件传递了结果，保存到task中
+          if (result) {
+            task.result = result;
+          }
           this.completeTask(task, page);
         },
         failed: (error, canRetry = false) => {
@@ -329,13 +335,17 @@ class ContextManager extends EventEmitter {
       // 执行插件函数
       const result = await task.taskFunction(page, contextManager, task.pluginOptions);
 
+      // 保存任务结果到任务对象中（如果之前没有通过complete设置的话）
+      if (!task.result && result) {
+        task.result = result;
+      }
+
       // 自动完成机制：如果插件没有调用 complete() 或 failed()，自动完成任务
       if (!task.completed) {
         this.completeTask(task, page);
       }
 
       task.resolve(result);
-
     } catch (error) {
       logger.error(`Task ${task.taskId} execution failed:`, error.message);
 
@@ -432,7 +442,12 @@ class ContextManager extends EventEmitter {
     if (task.completed) return; // 防止重复完成
     task.completed = true;
 
-    // logger.info(`Task ${task.taskId}: Completed successfully`);
+    logger.log(`Task ${task.taskId}: Completed successfully`);
+
+    // 将任务结果添加到结果数组中
+    if (task.result) {
+      this.taskResults.push(task.result);
+    }
 
     // 清理资源
     await this.cleanupTaskResources(task, page);
@@ -461,6 +476,7 @@ class ContextManager extends EventEmitter {
       task.reject(new Error('Context manager is closing'));
     });
     this.taskQueue = [];
+    this.taskResults = []; // 清空结果数组
 
     // 等待活跃上下文完成（最多等待10秒）
     // 给正在执行的任务一些时间来完成

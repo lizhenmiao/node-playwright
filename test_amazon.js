@@ -1,9 +1,10 @@
-const ContextManager = require('./utils/ContextManager');
+const ContextManager = require('./utils/contextManager');
 const amazonScraper = require('./plugins/amazonScraper');
 const proxyConfig = require('./utils/proxyConfig');
-const CommonUtils = require('./utils/CommonUtils');
+const CommonUtils = require('./utils/commonUtils');
 const { closeConnection, isConnectionActive } = require('./database/connection');
 const { logger } = require('./utils/logger');
+const axios = require('axios');
 
 (async () => {
   const manager = new ContextManager({
@@ -28,7 +29,7 @@ const { logger } = require('./utils/logger');
   }]
 
   try {
-    logger.info('开始测试多并发任务...\n');
+    logger.info('开始测试多并发任务...');
     const startTime = Date.now();
 
     for (const item of keywords) {
@@ -46,19 +47,32 @@ const { logger } = require('./utils/logger');
 
     // 事件监听状态变化
     const statusHandler = (status) => {
-      // logger.info(`[${new Date().toLocaleTimeString()}] 活跃Context: ${status.activeContexts}, 队列: ${status.queueLength}`);
+      logger.log(`[${new Date().toLocaleTimeString()}] 活跃Context: ${status.activeContexts}, 队列: ${status.queueLength}`);
     };
     manager.on('statusChange', statusHandler);
 
     // 等待所有任务完成
     await new Promise((resolve) => {
-      const completedHandler = () => {
+      const completedHandler = async (results) => {
         const executionTime = Date.now() - startTime;
         logger.info('耗时：', `${executionTime}ms - ${CommonUtils.formatMilliseconds(executionTime)}`);
 
         // 移除所有事件监听器
         manager.removeListener('statusChange', statusHandler);
         manager.removeListener('completed', completedHandler);
+
+        // 收集所有的crawlTaskId
+        const crawlTaskIds = results.map(result => result.crawlTaskId).filter(Boolean);
+
+        logger.info(`收集到 ${crawlTaskIds.length} 个任务ID, 完成顺序为: ${crawlTaskIds.join(', ')}, 排序后为: ${crawlTaskIds.sort((a, b) => a - b).join(', ')}`);
+
+        // 调用接口传递任务ID数组
+        if (crawlTaskIds.length > 0) {
+          await callApiWithTaskIds(crawlTaskIds);
+        } else {
+          logger.warn('没有成功的任务，跳过API调用');
+        }
+
         resolve();
       };
       manager.on('completed', completedHandler);
@@ -84,3 +98,32 @@ const { logger } = require('./utils/logger');
     }
   }
 })();
+
+/**
+ * 调用接口传递任务ID数组
+ * @param {Array} crawlTaskIds - 任务ID数组
+ */
+async function callApiWithTaskIds(crawlTaskIds) {
+  try {
+    // 接口调用配置 - 请根据实际情况修改
+    const apiUrl = 'https://your-api-endpoint.com/tasks/batch'; // 请替换为实际的API端点
+    const payload = {
+      taskIds: crawlTaskIds,
+      timestamp: new Date().toISOString(),
+      source: 'amazon-scraper'
+    };
+
+    /* const response = await axios.post(apiUrl, payload, {
+      headers: {
+        'Content-Type': 'application/json',
+        // 如果需要认证，请添加相应的headers
+        // 'Authorization': 'Bearer your-token'
+      },
+      timeout: 30000 // 30秒超时
+    }); */
+
+    logger.info(`接口调用成功！`);
+  } catch (error) {
+    logger.error('接口调用失败:', error.message);
+  }
+}

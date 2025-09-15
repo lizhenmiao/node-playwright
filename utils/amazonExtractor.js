@@ -349,7 +349,7 @@ function extractProductData($, $element) {
       product.widgetName = adOtherParams.widgetName;
     }
   } catch (error) {
-    logger.info('❌ 提取产品数据时出错:', error.message);
+    logger.error('❌ 提取产品数据时出错:', error.message);
   }
 
   return product;
@@ -400,7 +400,7 @@ function determineSBPositionType($container) {
 
     return 'sb_unknown';
   } catch (error) {
-    logger.info('❌ 确定SB位置类型失败:', error.message);
+    logger.error('❌ 确定SB位置类型失败:', error.message);
     return 'sb_unknown';
   }
 }
@@ -439,7 +439,7 @@ function extractAdParams($element) {
       }
     }
   } catch (error) {
-    logger.info('❌ 提取广告参数时出错:', error.message);
+    logger.error('❌ 提取广告参数时出错:', error.message);
   }
 
   return adParams;
@@ -481,7 +481,7 @@ function extractAdParamFromImpressionLogger($element) {
       }
     }
   } catch (error) {
-    logger.info('❌ 提取广告参数时出错:', error.message);
+    logger.error('❌ 提取广告参数时出错:', error.message);
   }
 
   return adParams;
@@ -529,7 +529,7 @@ function extractAdParamFromMultiFeedback($container) {
       }
     }
   } catch (error) {
-    logger.info('从multi feedback提取广告参数失败:', error.message);
+    logger.error('从multi feedback提取广告参数失败:', error.message);
   }
 
   return {};
@@ -646,11 +646,11 @@ function processSBContainerProducts($, $container, sbPositionType, containerProd
           products.push(product);
         }
       } catch (error) {
-        logger.info(`❌ 提取SB容器第 ${productIndex + 1} 个产品失败: ${error.message}`);
+        logger.error(`❌ 提取SB容器第 ${productIndex + 1} 个产品失败: ${error.message}`);
       }
     });
   } catch (error) {
-    logger.info('❌ 处理SB容器产品时出错:', error.message);
+    logger.error('❌ 处理SB容器产品时出错:', error.message);
   }
 
   return products;
@@ -707,11 +707,11 @@ function processSBContainerBrandImages($, $container, sbPositionType) {
           brandProducts.push(product);
         }
       } catch (error) {
-        logger.info(`❌ 提取SB容器品牌图片第 ${brandIndex + 1} 个失败: ${error.message}`);
+        logger.error(`❌ 提取SB容器品牌图片第 ${brandIndex + 1} 个失败: ${error.message}`);
       }
     });
   } catch (error) {
-    logger.info('❌ 处理SB容器品牌图片时出错:', error.message);
+    logger.error('❌ 处理SB容器品牌图片时出错:', error.message);
   }
 
   return brandProducts;
@@ -740,7 +740,7 @@ function cleanAsinData(rawAsin) {
     // 如果不包含特殊前缀，直接返回（可能已经是清洗后的格式）
     return rawAsin.trim();
   } catch (error) {
-    logger.info('❌ 清洗 ASIN 数据失败:', error.message);
+    logger.error('❌ 清洗 ASIN 数据失败:', error.message);
     return rawAsin;
   }
 }
@@ -771,7 +771,7 @@ function extractSBContainerInfo($container, positionType) {
           product.videoSourceUrl = props.videoSrc || '';
           product.videoPosterUrl = props.videoPreviewImageSrc || '';
         } catch (e) {
-          logger.info('❌ 解析 data-component-props 失败:', e.message);
+          logger.error('❌ 解析 data-component-props 失败:', e.message);
         }
       }
     }
@@ -813,7 +813,7 @@ function extractSBContainerInfo($container, positionType) {
             product.videoPosterUrl = props.videoPreviewImageSrc || '';
           }
         } catch (e) {
-          logger.info('❌ 解析data-properties JSON失败:', e.message);
+          logger.error('❌ 解析data-properties JSON失败:', e.message);
         }
       }
     }
@@ -833,7 +833,7 @@ function extractSBContainerInfo($container, positionType) {
       }
     }
   } catch (error) {
-    logger.info('❌ 提取SB容器信息时出错:', error.message);
+    logger.error('❌ 提取SB容器信息时出错:', error.message);
   }
 
   return product;
@@ -880,7 +880,7 @@ async function extractAmazonProductsFromHTML(htmlContent) {
           products.push(product);
         }
       } catch (error) {
-        logger.info(`❌ 提取第 ${i + 1} 个常规产品失败: ${error.message}`);
+        logger.error(`❌ 提取第 ${i + 1} 个常规产品失败: ${error.message}`);
       }
     });
 
@@ -947,7 +947,7 @@ async function extractAmazonProductsFromHTML(htmlContent) {
             products.push(product);
           }
         } catch (error) {
-          logger.info(`❌ 提取SP推荐专栏第 ${productIndex + 1} 个产品失败: ${error.message}`);
+          logger.error(`❌ 提取SP推荐专栏第 ${productIndex + 1} 个产品失败: ${error.message}`);
         }
       });
     });
@@ -980,7 +980,7 @@ async function extractAmazonProductsFromHTML(htmlContent) {
         const brandImages = processSBContainerBrandImages($, $container, sbPositionType);
         products.push(...brandImages);
       } catch (error) {
-        logger.info(`❌ 处理SB/SBV视频容器 ${i + 1} 失败: ${error.message}`);
+        logger.error(`❌ 处理SB/SBV视频容器 ${i + 1} 失败: ${error.message}`);
       }
     });
 
@@ -1010,7 +1010,7 @@ async function extractAmazonProductsFromHTML(htmlContent) {
         const brandImages = processSBContainerBrandImages($, $container, sbPositionType);
         products.push(...brandImages);
       } catch (error) {
-        logger.info(`❌ 处理SB lifestyle容器 ${i + 1} 失败: ${error.message}`);
+        logger.error(`❌ 处理SB lifestyle容器 ${i + 1} 失败: ${error.message}`);
       }
     });
 
@@ -1070,12 +1070,12 @@ async function extractAmazonProductsFromHTML(htmlContent) {
               products.push(product);
             }
           } catch (error) {
-            logger.info(`❌ 提取SB品牌组合第 ${brandIndex + 1} 个品牌失败: ${error.message}`);
+            logger.error(`❌ 提取SB品牌组合第 ${brandIndex + 1} 个品牌失败: ${error.message}`);
           }
         });
 
       } catch (error) {
-        logger.info(`❌ 处理SB品牌组合容器 ${i + 1} 失败: ${error.message}`);
+        logger.error(`❌ 处理SB品牌组合容器 ${i + 1} 失败: ${error.message}`);
       }
     });
 

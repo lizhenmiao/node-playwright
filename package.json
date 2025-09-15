@@ -1,14 +1,15 @@
 {
-  "name": "context-manager",
+  "name": "universal-data-scraper-api",
   "version": "2.0.0",
-  "description": "A universal browser context manager with concurrent page control and proxy/cookie support",
-  "main": "ContextManager.js",
+  "description": "通用数据抓取 API 服务，支持插件化架构和多种数据源抓取，提供结构化数据输出",
+  "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "db:init": "node database/init.js",
     "test:amazon": "node test_amazon.js"
   },
   "dependencies": {
+    "axios": "^1.12.2",
     "cheerio": "^1.1.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
@@ -22,11 +23,14 @@
     "winston-daily-rotate-file": "^5.0.0"
   },
   "keywords": [
-    "browser",
-    "automation",
-    "concurrent",
-    "context",
-    "playwright"
+    "data-scraping",
+    "web-scraping",
+    "api",
+    "plugin-architecture",
+    "express",
+    "cheerio",
+    "playwright",
+    "universal-scraper"
   ],
   "author": "Cody",
   "license": "MIT"

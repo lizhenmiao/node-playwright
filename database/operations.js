@@ -32,7 +32,7 @@ const TaskOps = {
       crawl_start_time: new Date(),
       zipCode
     });
-    // logger.info(`📝 创建任务: ID=${task.id}, 关键词="${keyword}"`);
+    logger.log(`📝 创建任务: ID=${task.id}, 关键词="${keyword}"`);
     return task;
   },
 
@@ -40,7 +40,7 @@ const TaskOps = {
   async start(taskId) {
     const { CrawlTask } = await getModels();
     await CrawlTask.update({ status: 'running' }, { where: { id: taskId } });
-    // logger.info(`🚀 任务 ${taskId} 开始运行`);
+    logger.log(`🚀 任务 ${taskId} 开始运行`);
   },
 
   // 完成任务
@@ -57,7 +57,7 @@ const TaskOps = {
       duration_seconds: durationSeconds
     }, { where: { id: taskId } });
 
-    // logger.info(`✅ 任务 ${taskId} 完成: ${totalProducts}个产品, ${totalSponsored}个广告`);
+    logger.log(`✅ 任务 ${taskId} 完成: ${totalProducts}个产品, ${totalSponsored}个广告`);
   },
 
   // 失败任务
@@ -72,7 +72,7 @@ const TaskOps = {
       error_message: errorMessage
     }, { where: { id: taskId } });
 
-    // logger.info(`❌ 任务 ${taskId} 失败: ${errorMessage}`);
+    logger.log(`❌ 任务 ${taskId} 失败: ${errorMessage}`);
   }
 };
 
@@ -117,7 +117,7 @@ const ProductOps = {
     }));
 
     await ProductRanking.bulkCreate(productData);
-    // logger.info(`💾 保存了 ${productData.length} 个产品数据`);
+    logger.log(`💾 保存了 ${productData.length} 个产品数据`);
   }
 };
 
