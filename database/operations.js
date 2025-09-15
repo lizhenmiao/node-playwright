@@ -96,6 +96,7 @@ const ProductOps = {
       image_url: product.image_url,
       price: product.price,
       original_price: product.original_price,
+      bought: product.bought,
       rating: product.rating,
       review_count: product.review_count,
       is_sponsored: product.is_sponsored,

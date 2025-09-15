@@ -135,6 +135,11 @@ function defineModels(sequelize) {
       allowNull: true,
       comment: '原价'
     },
+    bought: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      comment: '近期销量信息, 可能为空'
+    },
     rating: {
       type: DataTypes.DECIMAL(3, 2),
       allowNull: true,
