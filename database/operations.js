@@ -3,7 +3,7 @@
  * 包含任务和产品数据的增删改查
  */
 
-const { initConnection, getConnection, isConnectionActive } = require('./connection');
+const { initConnection, getConnection, isConnectionActive, reconnect } = require('./connection');
 const { defineModels } = require('./init');
 const { logger } = require('../utils/logger');
 
@@ -12,14 +12,33 @@ let models = null;
 
 // 获取模型实例
 async function getModels() {
-  if (!models) {
-    if (!isConnectionActive()) {
-      await initConnection();
+  try {
+    if (!models) {
+      if (!isConnectionActive()) {
+        await initConnection();
+      }
+      const sequelize = getConnection();
+      models = defineModels(sequelize);
     }
-    const sequelize = getConnection();
-    models = defineModels(sequelize);
+    return models;
+  } catch (error) {
+    // 如果获取连接失败，尝试重新初始化
+    logger.warn('获取数据库连接失败，尝试重新连接...', error.message);
+
+    // 重置模型缓存和连接状态
+    models = null;
+
+    try {
+      await reconnect();
+      const sequelize = getConnection();
+      models = defineModels(sequelize);
+      logger.info('✅ 数据库重连成功');
+      return models;
+    } catch (reconnectError) {
+      logger.error('❌ 数据库重连失败:', reconnectError.message);
+      throw reconnectError;
+    }
   }
-  return models;
 }
 
 // 任务操作

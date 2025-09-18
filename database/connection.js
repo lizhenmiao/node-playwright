@@ -27,8 +27,8 @@ const config = {
     max: 20,        // 最大连接数
     min: 5,         // 最小连接数
     acquire: 30000, // 获取连接超时时间(ms)
-    idle: 10000,    // 连接空闲超时时间(ms)
-    evict: 60000,   // 连接回收时间(ms)
+    idle: 1800000,  // 连接空闲超时时间(ms) - 30分钟
+    evict: 3600000, // 连接回收时间(ms) - 1小时
     handleDisconnects: true
   },
 
@@ -164,19 +164,6 @@ async function reconnect() {
     throw error;
   }
 }
-
-// 进程退出时自动关闭连接
-process.on('SIGINT', async () => {
-  logger.info('\n🔄 正在关闭数据库连接...');
-  await closeConnection();
-  process.exit(0);
-});
-
-process.on('SIGTERM', async () => {
-  logger.info('\n🔄 正在关闭数据库连接...');
-  await closeConnection();
-  process.exit(0);
-});
 
 module.exports = {
   sequelize,

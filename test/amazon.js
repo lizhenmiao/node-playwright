@@ -75,11 +75,6 @@ async function runAmazonScraper(keywords, shouldCallApi = false) {
         // 关闭浏览器
         await manager.close();
 
-        // 关闭数据库连接
-        if (isConnectionActive()) {
-          await closeConnection();
-        }
-
         // 如果是直接运行，解决Promise
         if (isDirectRun && resolvePromise) {
           resolvePromise();
@@ -89,9 +84,6 @@ async function runAmazonScraper(keywords, shouldCallApi = false) {
         // 清理资源
         try {
           await manager.close();
-          if (isConnectionActive()) {
-            await closeConnection();
-          }
         } catch (cleanupError) {
           logger.error('资源清理出错:', cleanupError.message);
         }
@@ -117,10 +109,6 @@ async function runAmazonScraper(keywords, shouldCallApi = false) {
 
     // 清理资源
     await manager.close();
-    if (isConnectionActive()) {
-      await closeConnection();
-    }
-
     throw error;
   }
 }
@@ -131,11 +119,7 @@ async function runAmazonScraper(keywords, shouldCallApi = false) {
  */
 async function callApiWithTaskIds(crawlTaskIds) {
   try {
-    const response = await axios.get(`${process.env.BASE_API}/api/keywordPositionRule/executionRules`, {
-      params: {
-        crawlTaskIdList: crawlTaskIds
-      }
-    });
+    const response = await axios.get(`${process.env.BASE_API}/api/keywordPositionRule/executionRules?crawlTaskIdList=${crawlTaskIds}`);
 
     logger.info(`接口调用成功！`, response.data);
   } catch (error) {
@@ -196,14 +180,31 @@ if (require.main === module) {
   // 直接运行时使用默认配置：不调用接口
   logger.info('开始测试多并发任务...');
 
+  let hasError = false;
+
   runAmazonScraper(defaultKeywords, false)
     .then(() => {
       logger.info('测试运行完成');
-      process.exit(0);
     })
     .catch((error) => {
       logger.error('测试运行出错:', error.message);
-      process.exit(1);
+      hasError = true;
+    })
+    .finally(async () => {
+      // 直接运行时，无论成功还是失败都需要关闭数据库连接
+      if (isConnectionActive()) {
+        logger.info('🔄 关闭数据库连接...');
+        try {
+          await closeConnection();
+          logger.info('✅ 数据库连接已关闭');
+        } catch (closeError) {
+          logger.error('❌ 关闭数据库连接失败:', closeError.message);
+          hasError = true;
+        }
+      }
+
+      // 根据是否有错误决定退出码
+      process.exit(hasError ? 1 : 0);
     });
 }
 

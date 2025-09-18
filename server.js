@@ -12,7 +12,8 @@ const { extractProducts } = require('./test/extractor');
 const runAmazonScraper = require('./test/amazon');
 const axios = require('axios');
 const { cookiesConfig } = require('./utils/cookiesConfig');
-const { CommonUtils } = require('./utils/commonUtils');
+const CommonUtils = require('./utils/commonUtils');
+const { initConnection, closeConnection } = require('./database/connection');
 
 // 加载环境变量
 require('dotenv').config();
@@ -24,7 +25,64 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// 主要接口 - 获取Amazon产品数据
+/**
+ * 执行爬取任务的核心逻辑
+ */
+async function executeScrapeTask() {
+  try {
+    const response = await axios.get(`${process.env.BASE_API}/api/keywordPositionRule/scrapeParams`);
+
+    const { data } = response || {};
+
+    logger.info(`调用接口获取到数据: ${JSON.stringify(data || [])}`);
+
+    const dataList = (data || []).map(item => {
+      const { keywordText, amazonUrl, countryCode } = item;
+
+      const domain = CommonUtils.getDomain(amazonUrl);
+
+      // logger.info(`获取到域名: ${domain}`);
+
+      const { zipCode } = cookiesConfig.find(cookie => cookie.domain === domain);
+      // logger.info(`获取到 zipCode: ${zipCode}`);
+
+      return {
+        keyword: keywordText,
+        url: amazonUrl,
+        countryCode,
+        zipCode
+      }
+    });
+
+    logger.info(`调用接口获取到 ${dataList.length} 条任务`);
+
+    const filteredDataList = dataList.filter(item => item.zipCode);
+
+    // 看看是否有没有匹配到 zipCode 的
+    const noZipCodeDataList = dataList.filter(item => !item.zipCode);
+
+    if (noZipCodeDataList.length > 0) {
+      logger.warn('以下爬取任务没有匹配到 zipCode: ', JSON.stringify(noZipCodeDataList));
+
+      return;
+    }
+
+    if (filteredDataList.length === 0) {
+      logger.warn('没有获取到爬取参数，跳过爬取任务');
+
+      return;
+    }
+
+    // 启动爬虫任务，立即返回，不等待完成
+    runAmazonScraper(filteredDataList, true);
+  } catch (error) {
+    throw error;
+  }
+}
+
+/**
+ * 测试接口 - 获取Amazon产品数据
+ */
 app.get('/api/testExtractProducts', async (req, res) => {
   try {
     const products = await extractProducts();
@@ -61,13 +119,41 @@ app.get('/api/testExtractProducts', async (req, res) => {
   }
 });
 
-// 404处理
+
+/**
+ * 手动触发爬取任务接口
+ */
+app.get('/api/triggerScrapeTask', (req, res) => {
+  try {
+    executeScrapeTask();
+
+    res.json({
+      success: true,
+      message: '手动触发爬取任务成功',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    logger.error('爬取任务执行失败:', error.message);
+
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      message: '手动触发爬取任务失败',
+      timestamp: new Date().toISOString()
+    });
+  }
+})
+
+/**
+ * 404处理
+ */
 app.use((req, res) => {
   res.status(404).json({
     success: false,
     message: '接口不存在',
     endpoints: [
       'GET /api/testExtractProducts - 测试Amazon产品数据提取',
+      'GET /api/triggerScrapeTask - 手动触发爬取任务'
     ]
   });
 });
@@ -77,44 +163,9 @@ app.use((req, res) => {
  */
 function initScheduledTasks() {
   // 每小时的第0分钟和第30分钟执行任务
-  cron.schedule('0,30 * * * *', async () => {
+  cron.schedule('0,30 * * * *', () => {
     try {
-      const response = await axios.get(`${process.env.BASE_API}/api/keywordPositionRule/scrapeParams`);
-
-      const dataList = (response.data || []).map(item => {
-        const { keywordText, amazonUrl, countryCode } = item;
-
-        const domain = CommonUtils.getDomain(amazonUrl);
-
-        const { zipCode } = cookiesConfig.find(cookie => cookie.domain === domain);
-
-        return {
-          keyword: keywordText,
-          url: amazonUrl,
-          countryCode,
-          zipCode
-        }
-      });
-
-      const filteredDataList = dataList.filter(item => item.zipCode);
-
-      // 看看是否有没有匹配到 zipCode 的
-      const noZipCodeDataList = dataList.filter(item => !item.zipCode);
-
-      if (noZipCodeDataList.length > 0) {
-        logger.warn('以下爬取任务没有匹配到 zipCode: ', JSON.stringify(noZipCodeDataList));
-
-        return;
-      }
-
-      if (filteredDataList.length === 0) {
-        logger.warn('没有获取到爬取参数，跳过爬取任务');
-
-        return;
-      }
-
-      // 启动爬虫任务，立即返回，不等待完成
-      runAmazonScraper(filteredDataList, true);
+      executeScrapeTask();
 
       logger.info('定时爬取任务后台开始执行...');
     } catch (error) {
@@ -130,6 +181,14 @@ function setupGracefulShutdown() {
   const shutdown = async (signal) => {
     await logger.info(`收到 ${signal} 信号，开始优雅关闭`);
 
+    // 关闭数据库连接
+    try {
+      await closeConnection();
+      logger.info('✅ 数据库连接已关闭');
+    } catch (error) {
+      logger.error('❌ 关闭数据库连接失败:', error.message);
+    }
+
     // 关闭服务器
     process.exit(0);
   };
@@ -139,9 +198,18 @@ function setupGracefulShutdown() {
 }
 
 // 启动服务器
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   logger.info('🚀 Amazon产品数据提取API已启动!');
   logger.info(`📡 服务地址: http://localhost:${PORT}`);
+
+  /* // 初始化数据库连接
+  try {
+    await initConnection();
+    logger.info('✅ 数据库连接初始化成功');
+  } catch (error) {
+    logger.error('❌ 数据库连接初始化失败:', error.message);
+    logger.warn('⚠️ 服务器将继续运行，但数据库相关功能可能无法正常工作');
+  } */
 
   // 初始化定时任务
   initScheduledTasks();
