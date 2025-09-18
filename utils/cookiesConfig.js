@@ -14,6 +14,31 @@ const cookiesConfig = [{
   // 加拿大
   domain: 'amazon.ca',
   cookie: 'csm-sid=473-5328030-6784468; x-amz-captcha-1=1757647739841093; x-amz-captcha-2=Om/7W2wxVPWKBAq2mFn2og==; session-id=136-1837375-0224660; session-id-time=2082787201l; i18n-prefs=CAD; lc-acbca=en_CA; ubid-acbca=132-5928466-9815763; session-token=x8swTTl3JD9o0sXP8fHc2POJtvW0ozpcT+eU04wYy49KWifCj0/eHECyQtepPVp4i0NpjqhrVeTDkd9uD04CczbuGZVeLiZjJBTvgyPh/DrmbqEy1M+e+Xg3P3VBLP5mQQlvNSvtuwQ/NIEY7UN0lwohDpLw8VrcskqWfutrqxez9soCyFo61HHgidDAp/bLPNCl/G8609QIoAjw0uW9eOmjQhR73mt1R5gUb4d7nQtOZhT/pB2Dmv3+VRYoI79iwkBsLM8qlbll66wtwh8H6SMCufpWI84fw8HYqOem3fYdpHfe8NZoGah2F9KuEESe/2WgBdPvMfd7SoYYfJtfvX0r+AIf9TLh; csm-hit=tb:ZXBHHCPG6YPJKV1K13N4+s-94BMJ6J5J24353H386FP|1757640575897&t:1757640575897&adb:adblk_no; rxc=AGwBC/LCIVBe/yApAfU'
+}, {
+  zipCode: '110-0008',
+  // 日本
+  domain: 'amazon.co.jp',
+  cookie: 'csm-sid=318-9661058-1684875; x-amz-captcha-1=1757932171196392; x-amz-captcha-2=X6erKfXqWAXfI/csajWzsg==; session-id=355-5586931-5962701; session-id-time=2082787201l; i18n-prefs=JPY; lc-acbjp=en_US; skin=noskin; ubid-acbjp=356-2833166-9195704; session-token="UTQPd4S/KuPV5n4KMSzUC5OKc1qKqizVeWBGJ9EvECOTnMB5AucThwKe+9SeVWXNROne8dGYsSHQ7Bm7HGZOy85Li5VyynJ7GB+Gczlk786pJ0AcFs2WXGatuJOXzgC+0PbbQ7OM7CqH+Sp8Lm9pw+oj48jmolUHMMI8axzm8voMcvrQgfRb/zV6zZN05LEmaoadSKIC8vwtcqpt1maQ1KRAQouSF6lPPXXouSEL9/cOupq0u5Kg1o7vP2xdf8YfslFf90CGMtTCZuTpaD8ppkebDPHMinvT32LreEM4lJSgi5kRddEAmoiqGavohJT9ts/9O90VpHZ4YmDlnt1uvawPoKrWHGFRrYigeDFEBpk="; csm-hit=tb:1AN594S9ANGA8ENNMZ94+s-HA4BCQZNA17AMRN1S7A3|1757925122080&t:1757925122080&adb:adblk_no; rxc=AGQgLV9sbiv3W24Dz0A'
+}, {
+  zipCode: 20099,
+  // 德国
+  domain: 'amazon.de',
+  cookie: 'csm-sid=581-6895210-0219660; x-amz-captcha-1=1757932467048387; x-amz-captcha-2=vlLYIs4ZQ6WJE5n6GVxbpQ==; session-id=261-8602632-0459265; session-id-time=2082787201l; i18n-prefs=EUR; lc-acbde=en_GB; ubid-acbde=262-2626969-5612269; session-token=Q2dQT0WHHniGc89uG41E95/U4vFVpm21XvUqPlcEGTRq9ucDSL4OvZ2nc0SQ3jIKb2z8uegv6IJRfXtUI1nisc8Wm9JhFsYxysuDbtecEvK7zHC8CWacBFpOIIG8PTVdvz8dDUdRM26lFRpgVfUcsSrpllmoA8csQpPrXd2Yuf2B6B/68ZrwTkQz+aHQzKiAaTcQLU8LHEEyDCA+wi4JmLFiRKs+Gs5xPISe6APNjJh+tDMTqFMeOmEGnQWNhYWMD1x2n+V5MefN59egBBR1YFZpWTR+vPpBNmXwwgpdNa2YZJus0X0sP+vVLU9sUIE/ay/J4Ieh9OxBXny96TlKwudiQCk5THL5; csm-hit=tb:HQWQAJXYQMHJ9JG8VV3Q+s-B32PA8BCWV26PPTVDX12|1757925304510&t:1757925304510&adb:adblk_no; rxc=AMLOcZRKq+Lmhqvn7H4'
+}, {
+  zipCode: 75000,
+  // 法国
+  domain: 'amazon.fr',
+  cookie: 'csm-sid=999-2470330-3003100; x-amz-captcha-1=1757932557954447; x-amz-captcha-2=7pW+ajJUvV8mNkAJl5Ii9Q==; session-id=520-3085030-8516753; session-id-time=2082787201l; i18n-prefs=EUR; lc-acbfr=en_GB; ubid-acbfr=261-8474071-5403838; session-token=TBIPlvTYor3y8A3r9Aa6FGogAsAOhZdFvOStuSEkQ1j0ktVKfgb5K6JvLCOogCTE5KpwTAVq/MU/IqsvzSCnSHI7eV5N2hWGP2b1lUyt/cEqqkqueXn6PvdNq3G0YppxSpsrKlnE7ynD0Ct3vjKkaLCudUDtmJo1m3Vy6m8M4wWY/Xj3vkDZBOqLKoQWYOGlBxoNQ+mfYw4I+sJXXqaqVtZmGsj4RS4jtWTP/Xb6fOKlWaL+laYQIwqu0XN5d5AbwIJeEAlgn4hVDHgqbTA4yCyPMAmKrBP35b1Z7tBZKUDCp2/uYsPHEc+M8eE0nQVqxJ3q7zm8agOmioDKxmC1srCSRUjSUBTs; csm-hit=tb:KXGPEBWKS2YXCSH9890N+s-60XV55W1G7667W11ZM8B|1757925390578&t:1757925390578&adb:adblk_no; rxc=AMdaJMl7Zzp1mAVs6vQ'
+}, {
+  zipCode: 20123,
+  // 意大利
+  domain: 'amazon.it',
+  cookie: 'csm-sid=879-4984110-7475506; x-amz-captcha-1=1757932634487635; x-amz-captcha-2=oXlpFDy+HveX5P0ft9Or+A==; session-id=525-6065176-7724220; session-id-time=2082787201l; i18n-prefs=EUR; lc-acbit=en_GB; ubid-acbit=260-0654361-7558928; session-token=259yzuNCFa4flyIgKaRrd9s/Kvjsh63wTiYNljw854RrACMG+Fq468x+X6X3GFeLWRYmxhF50UxwSIOxI71SdezzWZQl8zBpgv5AZqH1JDRvn/HPFdqVgub6PDpCTOYWNxFIj7f3tOk51QodHBlBVNWepaUDyFS1DtIvlWRa5dFUWXUDVao2OHselgaJ1PsMnPCUpQItnHWLISiWT5Qq0tKJfzN4YA3GYKHOTKaRUUWRa+dTiiwk2//BGmyssG0DAzmCimOmPLeRyo6oG3+HYo9BOvn823Ux+M64kFkIOkkhjkL8BsPDKkU1MHB3zkI4OaEmEcsX/hVtYGzC/+RbZCHw56/GqIac; rxc=AOrihcXYx1ff9NzR6cY; csm-hit=tb:15Y9E6K9RFYP0N1JVY8G+s-551CNZ4R15QQT20J5CKG|1757925505423&t:1757925505423&adb:adblk_no'
+}, {
+  zipCode: 28028,
+  // 西班牙
+  domain: 'amazon.es',
+  cookie: 'csm-sid=512-4686627-3486702; x-amz-captcha-1=1757932759516726; x-amz-captcha-2=HGIwDLVoCldzRe7cjEPGCQ==; session-id=525-0295903-4285848; session-id-time=2082787201l; i18n-prefs=EUR; lc-acbes=en_GB; ubid-acbes=261-4253942-2830160; session-token=YKzfjRyWk9kh+SKuLXzvYdzaZ+dRpibAhGjMBKmq8MPmKQB42JJC6HuXOdgzsqREbc8/lR1O+KheMGYtEb305++Kz+XDPrrdfuuDLHsChULUmhKem3wJTD1FzVezR39oqEvsRTVSaK6Xs2xYSJBM7B3XS1VBu73Qlof5j9k6dH0etOfHVxrXMK9pH5XwwO8NHjDS5RL8h1NLTckKsaVBXXVYQGh6ttaPynxdL6gBNYdiEU0BFcxOGLG/SDsAqRt0XkXwxys2zF74OueICF7MeYKWcavlTJSVptnRggDhHDYyDp1lb5XIGeQ/2fXFm//DUkymNqkLWyA0UskRKGlznbHq230oDKo/; csm-hit=tb:4RAM8J3CNPZ6KY0B0QSS+s-4SHQJ71HVXN6A42HT9RT|1757925591911&t:1757925591911&adb:adblk_no; rxc=ALZmkiFJ4RS7mrWU6n4'
 }]
 
 module.exports = {

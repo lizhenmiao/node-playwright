@@ -1,12 +1,12 @@
-const ContextManager = require('./utils/contextManager');
-const ipCheck = require('./plugins/ipCheck');
-const proxyConfig = require('./utils/proxyConfig');
-const { logger } = require('./utils/logger');
+const ContextManager = require('../utils/contextManager');
+const ipCheck = require('../plugins/ipCheck');
+const proxyConfig = require('../utils/proxyConfig');
+const { logger } = require('../utils/logger');
 
 (async () => {
   const manager = new ContextManager({
     maxConcurrency: 3,  // 测试3个并发
-    headless: false,
+    headless: true,
     useRandomUA: true,
     browserType: 'chromium'
   });
@@ -14,12 +14,9 @@ const { logger } = require('./utils/logger');
   try {
     logger.info('开始测试多并发任务...');
 
-    // 创建5个任务测试并发控制
-    for (let i = 1; i <= 5; i++) {
-      manager.addTask(ipCheck, {
-        proxy: proxyConfig.getProxyUrl(),
-      });
-    }
+    manager.addTask(ipCheck, {
+      proxy: proxyConfig.getProxyUrl()
+    });
 
     // 事件监听状态变化
     const statusHandler = (status) => {
@@ -40,9 +37,8 @@ const { logger } = require('./utils/logger');
 
     await manager.close();
     logger.info('测试完成');
-
   } catch (error) {
-    logger.error('测试出错:', error);
+    logger.error('测试出错:', error.message);
     await manager.close();
   }
 })();

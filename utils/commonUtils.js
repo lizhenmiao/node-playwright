@@ -5,7 +5,6 @@ const UserAgent = require('user-agents');
  * 包含代理解析、Cookie处理、User-Agent生成等公共功能
  */
 class CommonUtils {
-  
   /**
    * 解析代理字符串
    * 支持格式: protocol://username:password@host:port
@@ -45,7 +44,7 @@ class CommonUtils {
    */
   static parseCookieStringToObjects(cookieString, domain = null) {
     if (!cookieString) return [];
-    
+
     const cookies = [];
     const pairs = cookieString.split(';');
 
@@ -68,17 +67,6 @@ class CommonUtils {
     }
 
     return cookies;
-  }
-
-  /**
-   * 将Cookie对象数组转换为HTTP请求格式字符串
-   * @param {Array} cookieObjects - Cookie对象数组
-   * @returns {string} Cookie字符串
-   */
-  static cookieObjectsToHttpString(cookieObjects) {
-    if (!Array.isArray(cookieObjects) || cookieObjects.length === 0) return '';
-    
-    return cookieObjects.map(cookie => `${cookie.name}=${cookie.value}`).join('; ');
   }
 
   /**
@@ -121,8 +109,8 @@ class CommonUtils {
     };
 
     // Playwright 支持 HTTP/HTTPS 代理认证，但不支持 SOCKS 代理认证
-    if (proxyInfo.username && proxyInfo.password && 
-        (proxyInfo.protocol === 'http' || proxyInfo.protocol === 'https')) {
+    if (proxyInfo.username && proxyInfo.password &&
+      (proxyInfo.protocol === 'http' || proxyInfo.protocol === 'https')) {
       proxyConfig.username = proxyInfo.username;
       proxyConfig.password = proxyInfo.password;
     }
@@ -131,36 +119,10 @@ class CommonUtils {
   }
 
   /**
-   * 处理混合Cookie输入（字符串或对象数组）
-   * @param {string|Array} cookies - Cookie输入
-   * @param {string} domain - Cookie域名
-   * @param {string} format - 输出格式 ('objects' | 'http')
-   * @returns {Array|string} 处理后的Cookie
+   * 格式化毫秒为分钟和秒
+   * @param {number} ms - 毫秒
+   * @returns {string} 格式化后的字符串
    */
-  static processCookies(cookies, domain = null, format = 'objects') {
-    if (!cookies) return format === 'objects' ? [] : '';
-
-    let cookieObjects = [];
-
-    if (typeof cookies === 'string') {
-      cookieObjects = CommonUtils.parseCookieStringToObjects(cookies, domain);
-    } else if (Array.isArray(cookies)) {
-      cookieObjects = cookies.map(cookie => {
-        if (typeof cookie === 'string') {
-          // 如果数组中包含字符串，解析它
-          return CommonUtils.parseCookieStringToObjects(cookie, domain)[0];
-        }
-        return cookie;
-      }).filter(Boolean);
-    }
-
-    if (format === 'http') {
-      return CommonUtils.cookieObjectsToHttpString(cookieObjects);
-    }
-
-    return cookieObjects;
-  }
-
   static formatMilliseconds(ms) {
     const totalSeconds = Math.floor(ms / 1000);
     if (totalSeconds < 60) {
@@ -169,6 +131,23 @@ class CommonUtils {
       const minutes = Math.floor(totalSeconds / 60);
       const seconds = totalSeconds % 60;
       return `${minutes}分钟${seconds}秒`;
+    }
+  }
+
+  /**
+   * 获取域名
+   * @param {string} url - 网址
+   * @returns {string} 域名
+   */
+  static getDomain(url) {
+    try {
+      // 获取域名，可能带 www.
+      const hostname = new URL(url).hostname;
+      // 去掉 www. 前缀（如果有）
+      return hostname.startsWith('www.') ? hostname.slice(4) : hostname;
+    } catch (e) {
+      // URL 解析失败，返回空或原字符串
+      return '';
     }
   }
 }

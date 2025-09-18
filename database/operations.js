@@ -25,12 +25,13 @@ async function getModels() {
 // 任务操作
 const TaskOps = {
   // 创建任务
-  async create(keyword, zipCode = null) {
+  async create(keyword, zipCode = null, countryCode = null) {
     const { CrawlTask } = await getModels();
     const task = await CrawlTask.create({
       keyword,
       crawl_start_time: new Date(),
-      zipCode
+      zipCode,
+      countryCode
     });
     logger.log(`📝 创建任务: ID=${task.id}, 关键词="${keyword}"`);
     return task;
@@ -96,6 +97,7 @@ const ProductOps = {
       image_url: product.image_url,
       price: product.price,
       original_price: product.original_price,
+      currency_symbol: product.currency_symbol,
       bought: product.bought,
       rating: product.rating,
       review_count: product.review_count,

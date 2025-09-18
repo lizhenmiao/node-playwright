@@ -5,10 +5,12 @@ const { initConnection, isConnectionActive } = require('../database/connection')
 const fs = require('fs').promises;
 const { logger } = require('../utils/logger');
 
-// 配置参数 - 增加超时时间以应对网络不稳定
-const maxRetries = 99;
-const searchTimeout = 60000; // 搜索超时时间增加到60秒
-const pageLoadTimeout = 60000; // 页面加载超时时间增加到60秒
+// 最大重试次数
+const maxRetries = 50;
+// 搜索超时时间 - 50秒
+const searchTimeout = 50000;
+// 页面加载超时时间 - 50秒
+const pageLoadTimeout = 50000;
 
 // 确保html_files目录存在
 fs.mkdir('./html_files', { recursive: true }).catch(() => {
@@ -25,7 +27,7 @@ fs.mkdir('./html_files', { recursive: true }).catch(() => {
  * @param {number} pluginOptions.maxPage - 最大页数
  */
 async function amazonScraper(page, context, pluginOptions = {}) {
-  const { url, keyword, maxPage = 3 } = pluginOptions;
+  const { url, keyword, countryCode, maxPage = 3 } = pluginOptions;
 
   // 从 context 中获取 zipCode（Context配置参数）
   const zipCode = String(context.zipCode);
@@ -49,16 +51,33 @@ async function amazonScraper(page, context, pluginOptions = {}) {
   try {
     const startTime = Date.now();
 
-    // 创建数据库任务记录
+    // 创建数据库任务记录（只在首次执行时创建，重试时复用）
     try {
       // 确保数据库连接已建立
       if (!isConnectionActive()) {
         await initConnection();
       }
 
-      const task = await TaskOps.create(keyword, zipCode);
-      crawlTaskId = task.id;
-      await TaskOps.start(crawlTaskId);
+      if (context.retryCount === 0) {
+        // 首次执行，创建新的数据库记录
+        const task = await TaskOps.create(keyword, zipCode, countryCode);
+        crawlTaskId = task.id;
+        context.crawlTaskId = crawlTaskId; // 保存到context中，供重试时使用
+        await TaskOps.start(crawlTaskId);
+      } else {
+        // 重试执行，复用之前的数据库记录
+        crawlTaskId = context.crawlTaskId;
+        if (crawlTaskId) {
+          await TaskOps.start(crawlTaskId); // 重新标记为运行状态
+          logger.info(`任务 ${context.taskId}: 重试使用现有数据库记录 ID=${crawlTaskId}`);
+        } else {
+          logger.warn(`任务 ${context.taskId}: 重试时未找到crawlTaskId，创建新记录`);
+          const task = await TaskOps.create(keyword, zipCode, countryCode);
+          crawlTaskId = task.id;
+          context.crawlTaskId = crawlTaskId;
+          await TaskOps.start(crawlTaskId);
+        }
+      }
     } catch (dbError) {
       logger.error(`任务 ${context.taskId}: 数据库操作失败 - ${dbError.message}`);
     }
@@ -118,7 +137,11 @@ async function amazonScraper(page, context, pluginOptions = {}) {
     const totalOrganic = allResults.reduce((sum, result) => sum + (result.organicCount || 0), 0);
 
     const executionTime = Date.now() - startTime;
-    logger.info(`任务 ${context.taskId}: 任务完成，共提取 ${allResults.length} 页，总计 ${totalProducts} 个产品（SP广告: ${totalSponsored}个，自然排名: ${totalOrganic}个），耗时：${executionTime}ms - ${CommonUtils.formatMilliseconds(executionTime)}，重试次数: ${context.retryCount}`);
+    const perPageRefreshSummary = allResults.length > 0
+      ? `，每页刷新次数：${allResults.map(r => `第${r.pageNumber}页${(r.refreshCount ?? 0)}次`).join('，')}`
+      : '';
+
+    logger.info(`[任务 ${context.taskId} (数据库: ${crawlTaskId})]: 任务完成，共提取 ${allResults.length} 页，总计 ${totalProducts} 个产品（SP广告: ${totalSponsored}个，自然排名: ${totalOrganic}个），耗时：${executionTime}ms - ${CommonUtils.formatMilliseconds(executionTime)}，重试次数: ${context.retryCount}${perPageRefreshSummary}`);
 
     const result = {
       success: true,
@@ -300,6 +323,7 @@ async function waitForSearchResults(page, context) {
  */
 async function scrollToBottom(page, context) {
   logger.log(`任务 ${context.taskId}: 开始滚动页面到底部...`);
+  const startTime = Date.now();
 
   try {
     await page.evaluate(async () => {
@@ -326,8 +350,8 @@ async function scrollToBottom(page, context) {
       window.scrollTo(0, document.body.scrollHeight);
     });
 
-    logger.log(`任务 ${context.taskId}: 页面滚动完成`);
-
+    const executionTime = Date.now() - startTime;
+    logger.log(`任务 ${context.taskId}: 页面滚动完成，耗时：${executionTime}ms - ${CommonUtils.formatMilliseconds(executionTime)}`);
   } catch (error) {
     logger.log(`任务 ${context.taskId}: 页面滚动出错: ${error.message}`);
     // 滚动失败不抛出错误，继续执行
@@ -353,11 +377,15 @@ async function extractPageData(page, context, keyword, url, pageNumber) {
       // 检查是否有SP广告信息
       const hasSPAds = products.some(product => product.positionType === 'sp');
 
-      if (hasSPAds || refreshCount >= maxRetries) {
-        if (hasSPAds) {
-          logger.log(`任务 ${context.taskId}: 第 ${pageNumber} 页发现SP广告信息`);
-        } else {
-          logger.log(`任务 ${context.taskId}: 第 ${pageNumber} 页未发现SP广告信息，但已达到最大重试次数，继续执行`);
+      // 检查自然排名产品数量是否超过5个
+      const organicProducts = products.filter(product => product.positionType === 'organic');
+      const hasEnoughOrganic = organicProducts.length > 5;
+
+      if ((hasSPAds && hasEnoughOrganic) || refreshCount >= maxRetries) {
+        if (hasSPAds && hasEnoughOrganic) {
+          logger.log(`任务 ${context.taskId}: 第 ${pageNumber} 页发现SP广告信息且自然排名产品数量为 ${organicProducts.length} 个，满足停止条件`);
+        } else if (refreshCount >= maxRetries) {
+          logger.log(`任务 ${context.taskId}: 第 ${pageNumber} 页已达到最大重试次数，继续执行 (SP广告: ${hasSPAds ? '有' : '无'}, 自然排名: ${organicProducts.length}个)`);
         }
 
         // 为所有产品添加元数据
@@ -383,16 +411,23 @@ async function extractPageData(page, context, keyword, url, pageNumber) {
           sponsoredCount: sponsoredCount,
           organicCount: organicCount,
           hasSPAds: hasSPAds,
+          hasEnoughOrganic: hasEnoughOrganic,
+          satisfiesStopCondition: hasSPAds && hasEnoughOrganic,
           products: enrichedProducts,
-          html: html
+          html: html,
+          refreshCount: refreshCount
         };
       } else {
         refreshCount++;
-        logger.log(`任务 ${context.taskId}: 第 ${pageNumber} 页未发现SP广告信息，刷新页面重试 (${refreshCount}/${maxRetries})`);
+        const reasonMsg = [];
+        if (!hasSPAds) reasonMsg.push('无SP广告');
+        if (!hasEnoughOrganic) reasonMsg.push(`自然排名仅${organicProducts.length}个`);
+
+        logger.log(`任务 ${context.taskId}: 第 ${pageNumber} 页不满足停止条件 (${reasonMsg.join('，')})，刷新页面重试 (${refreshCount}/${maxRetries})`);
 
         // 刷新页面 - 只等待DOM内容加载
         try {
-          await page.reload({ waitUntil: 'domcontentloaded', timeout: 60000 });
+          await page.reload({ waitUntil: 'domcontentloaded', timeout: pageLoadTimeout });
         } catch (reloadError) {
           logger.log(`任务 ${context.taskId}: 页面刷新失败，尝试继续: ${reloadError.message}`);
         }
@@ -415,7 +450,7 @@ async function extractPageData(page, context, keyword, url, pageNumber) {
 
       // 刷新页面 - 只等待DOM内容加载
       try {
-        await page.reload({ waitUntil: 'domcontentloaded', timeout: 60000 });
+        await page.reload({ waitUntil: 'domcontentloaded', timeout: pageLoadTimeout });
       } catch (reloadError) {
         logger.log(`任务 ${context.taskId}: 页面刷新失败，尝试继续: ${reloadError.message}`);
       }
@@ -425,7 +460,7 @@ async function extractPageData(page, context, keyword, url, pageNumber) {
     }
   }
 
-  throw new Error(`第 ${pageNumber} 页在${maxRetries}次刷新后仍无法获取有效数据`);
+  throw new Error(`第 ${pageNumber} 页在${maxRetries}次刷新后仍无法同时满足SP广告信息和自然排名产品数量超过5个的条件`);
 }
 
 /**
@@ -460,7 +495,7 @@ async function goToNextPage(page, context) {
     // 使用更简单的等待策略
     try {
       // 只等待 DOM 内容加载
-      await page.waitForLoadState('domcontentloaded', { timeout: 60000 });
+      await page.waitForLoadState('domcontentloaded', { timeout: pageLoadTimeout });
     } catch (loadError) {
       logger.log(`任务 ${context.taskId}: 翻页后页面加载超时，尝试继续...`);
     }

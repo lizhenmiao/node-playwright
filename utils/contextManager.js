@@ -28,7 +28,7 @@ class ContextManager extends EventEmitter {
     // 浏览器启动配置
     this.browserOptions = {
       headless: options.headless !== false, // 默认无头模式
-      args: this.buildBrowserArgs(options), // 构建浏览器启动参数
+      args: this.buildBrowserArgs(), // 构建浏览器启动参数
       ...options.browserOptions
     };
 
@@ -39,7 +39,7 @@ class ContextManager extends EventEmitter {
   /**
    * 构建浏览器启动参数
    */
-  buildBrowserArgs(options) {
+  buildBrowserArgs() {
     const args = [
       '--disable-blink-features=AutomationControlled',
       '--disable-dev-shm-usage',
@@ -288,7 +288,7 @@ class ContextManager extends EventEmitter {
     // 使用 setImmediate 延迟检查，避免并发完成时的重复调用
     setImmediate(() => {
       if (this.taskQueue.length === 0 && this.activeContexts.size === 0) {
-        logger.info('\n=== 所有任务完成 ===');
+        logger.info('=== 所有任务完成 ===');
         // 将所有任务结果传递给completed事件
         this.emit('completed', this.taskResults);
       }
@@ -319,33 +319,30 @@ class ContextManager extends EventEmitter {
         taskId: task.taskId,
         context: context,
         retryCount: task.retryCount,
+        crawlTaskId: task.crawlTaskId,
         complete: (result) => {
-          // 如果插件传递了结果，保存到task中
           if (result) {
             task.result = result;
           }
+
+          if (contextManager.crawlTaskId) {
+            task.crawlTaskId = contextManager.crawlTaskId;
+          }
+
           this.completeTask(task, page);
         },
         failed: (error, canRetry = false) => {
+          if (contextManager.crawlTaskId) {
+            task.crawlTaskId = contextManager.crawlTaskId;
+          }
+
           this.failedTask(task, page, error, canRetry);
         },
         ...task.options
       };
 
       // 执行插件函数
-      const result = await task.taskFunction(page, contextManager, task.pluginOptions);
-
-      // 保存任务结果到任务对象中（如果之前没有通过complete设置的话）
-      if (!task.result && result) {
-        task.result = result;
-      }
-
-      // 自动完成机制：如果插件没有调用 complete() 或 failed()，自动完成任务
-      if (!task.completed) {
-        this.completeTask(task, page);
-      }
-
-      task.resolve(result);
+      await task.taskFunction(page, contextManager, task.pluginOptions);
     } catch (error) {
       logger.error(`Task ${task.taskId} execution failed:`, error.message);
 
@@ -378,11 +375,9 @@ class ContextManager extends EventEmitter {
       task.completed = false;
       task.context = null;
 
-      // 立即重试，不放入任务队列
+      // 直接重试，避免使用 setImmediate 导致的竞态条件
       // 保持任务在 activeContexts 中，表示任务仍在进行中
-      setImmediate(() => {
-        this.executeTask(task);
-      });
+      this.executeTask(task);
     } else {
       // 最终失败，不再重试
       task.completed = true;
@@ -395,7 +390,15 @@ class ContextManager extends EventEmitter {
       finalError.retryCount = task.retryCount;
 
       logger.error(`Task ${task.taskId} final failure:`, finalError.message);
-      task.reject(finalError);
+
+      // 在任务失败时再 reject addTask 返回的 Promise
+      if (typeof task.reject === 'function') {
+        try {
+          task.reject(finalError);
+        } catch (e) {
+          // ignore reject errors
+        }
+      }
 
       // 发送状态更新事件
       this.emitStatusChange();
@@ -460,6 +463,15 @@ class ContextManager extends EventEmitter {
     // 使用 setImmediate 确保在下一个事件循环中处理队列
     // 避免递归调用栈过深
     setImmediate(() => this.processQueue());
+
+    // 在任务真正完成时再 resolve addTask 返回的 Promise
+    if (typeof task.resolve === 'function') {
+      try {
+        task.resolve(task.result);
+      } catch (e) {
+        // ignore resolve errors
+      }
+    }
   }
 
 

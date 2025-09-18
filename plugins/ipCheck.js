@@ -1,6 +1,5 @@
 // 配置最大重试次数
 const maxRetries = 3;
-const { sleepSeconds } = require('../utils/sleep');
 const { logger } = require('../utils/logger');
 
 async function ipCheck(page, context) {
@@ -14,28 +13,23 @@ async function ipCheck(page, context) {
     });
 
     logger.info(`任务 ${context.taskId}: IP信息 - ${ipInfo}`);
-    
-    // 模拟一些处理时间
-    logger.info(`任务 ${context.taskId}: 等待 3 秒...`);
-    await sleepSeconds(3);
 
     // 明确通知任务完成
     logger.info(`任务 ${context.taskId}: 任务完成，通知管理器`);
+
     context.complete();
-    
-    return { ip: ipInfo, taskId: context.taskId, retryCount: context.retryCount };
   } catch (error) {
     logger.info(`任务 ${context.taskId}: 请求失败 - ${error.message}`);
-    
+
     // 只需要检查是否还有重试机会
     const canRetry = context.retryCount < maxRetries;
-    
+
     if (canRetry) {
       logger.info(`任务 ${context.taskId}: 将重试 (${context.retryCount + 1}/${maxRetries})`);
     } else {
       logger.info(`任务 ${context.taskId}: 已达到最大重试次数，最终失败`);
     }
-    
+
     context.failed(error, canRetry);
   }
 }

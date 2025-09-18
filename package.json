@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node server.js",
     "db:init": "node database/init.js",
-    "test:amazon": "node test_amazon.js"
+    "test:amazon": "node test/amazon.js",
+    "test:ip": "node test/ip.js"
   },
   "dependencies": {
     "axios": "^1.12.2",

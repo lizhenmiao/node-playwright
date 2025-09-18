@@ -64,6 +64,11 @@ function defineModels(sequelize) {
       type: DataTypes.STRING(100),
       allowNull: true,
       comment: '使用的Cookie的邮编地址, 可能是 数值 或 字符串'
+    },
+    countryCode: {
+      type: DataTypes.STRING(50),
+      allowNull: true,
+      comment: '站点英文代码'
     }
   }, {
     tableName: 'crawl_tasks',
@@ -134,6 +139,11 @@ function defineModels(sequelize) {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: true,
       comment: '原价'
+    },
+    currency_symbol: {
+      type: DataTypes.STRING(10),
+      allowNull: true,
+      comment: '货币符号'
     },
     bought: {
       type: DataTypes.TEXT,
@@ -260,7 +270,7 @@ async function initDatabase() {
 
     return { sequelize, CrawlTask, ProductRanking };
   } catch (error) {
-    logger.error('❌ 数据库初始化失败:', error);
+    logger.error('❌ 数据库初始化失败:', error.message);
     throw error;
   }
 }

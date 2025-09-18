@@ -19,6 +19,9 @@ class ProductItem {
     this.price = null;
     this.originalPrice = null;
 
+    // 货币符号
+    this.currencySymbol = '';
+
     // 评价信息
     this.rating = null;
     this.reviewCount = null;
@@ -62,6 +65,9 @@ class ProductItem {
       // 价格信息
       price: this.price,
       original_price: this.originalPrice,
+
+      // 货币符号
+      currency_symbol: this.currencySymbol,
 
       // 评价信息
       rating: this.rating,
@@ -208,6 +214,12 @@ function extractProductData($, $element) {
           }
         }
       }
+    }
+
+    // 提取货币符号
+    const currencySymbol = $element.find('.a-price-symbol').first().text().trim();
+    if (currencySymbol) {
+      product.currencySymbol = currencySymbol;
     }
 
     // 标准产品评分
