@@ -44,8 +44,9 @@ class ContextManager extends EventEmitter {
       '--disable-dev-shm-usage',
       '--disable-web-security',
       '--disable-features=VizDisplayCompositor',
-      "--no-sandbox",
-      '--start-maximized'
+      '--no-sandbox',
+      '--start-maximized',
+      '--start-fullscreen'
     ];
 
     return args;
@@ -127,7 +128,9 @@ class ContextManager extends EventEmitter {
       await this.init();
     }
 
-    const contextOptions = {};
+    const contextOptions = {
+      locale: 'en-US',
+    };
 
     // 设置代理 - Playwright 在 Context 级别设置代理
     if (options.proxy) {
@@ -147,7 +150,7 @@ class ContextManager extends EventEmitter {
 
     // 设置视窗大小 - Playwright 支持在 Context 级别设置
     if (options.viewport) {
-      contextOptions.viewport = options.viewport;
+      contextOptions.viewport = options.viewport || null;
     }
 
     // 创建浏览器上下文 - 每个 Context 都是完全独立的无痕环境

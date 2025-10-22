@@ -33,6 +33,19 @@ async function executeScrapeTask() {
     const response = await axios.get(`${process.env.BASE_API}/api/keywordPositionRule/scrapeParams`);
 
     const { data } = response || {};
+    /* const data = [{
+      keywordText: 'keystone cat5e jack',
+      amazonUrl: 'https://www.amazon.com',
+      countryCode: 'US'
+    }, {
+      keywordText: 'netzwerk werkzeug',
+      amazonUrl: 'https://www.amazon.de',
+      countryCode: 'DE'
+    }, {
+      keywordText: 'hdmi femelle femelle',
+      amazonUrl: 'https://www.amazon.ca',
+      countryCode: 'CA'
+    }] */
 
     logger.info(`调用接口获取到数据: ${JSON.stringify(data || [])}`);
 

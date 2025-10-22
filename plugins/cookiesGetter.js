@@ -1,5 +1,6 @@
 const { logger } = require('../utils/logger');
 const CommonUtils = require('../utils/commonUtils');
+const { sleep } = require('../utils/sleep');
 
 // 最大重试次数
 const maxRetries = 50;
@@ -7,6 +8,46 @@ const maxRetries = 50;
 const selectorTimeout = 10000;
 // 页面加载超时时间
 const pageLoadTimeout = 30000;
+
+/**
+ * 等待并点击元素的通用函数
+ * @param {Object} page - Playwright 页面对象
+ * @param {Array} selectors - 选择器数组
+ * @param {string} logPrefix - 日志前缀
+ * @param {string} elementName - 元素名称
+ * @param {boolean} force - 是否必须找到元素，如果为 true，则必须找到元素，否则抛出错误
+ * @returns {Object} - 找到的元素
+ */
+async function waitAndClickElement(page, selectors, logPrefix, elementName, force = true) {
+  let element = null;
+
+  for (const selector of selectors) {
+    try {
+      element = await page.waitForSelector(selector, { timeout: selectorTimeout, state: 'visible' });
+      if (element) {
+        logger.info(`${logPrefix} 找到${elementName}: ${selector}`);
+        break;
+      }
+    } catch (error) {
+      // 继续尝试下一个选择器
+    }
+  }
+
+  if (!element && force) {
+    throw new Error(`${logPrefix} 未找到${elementName}`);
+  }
+
+  if (element) {
+    try {
+      await element.click();
+      logger.info(`${logPrefix} 已点击${elementName}`);
+    } catch (error) {
+      throw new Error(`${logPrefix} 点击${elementName}失败: ${error.message}`);
+    }
+  }
+
+  return element;
+}
 
 /**
  * Amazon Cookies 获取插件
@@ -26,57 +67,69 @@ async function cookiesGetter(page, context, pluginOptions = {}) {
   logger.info(`${logPrefix} 开始获取 cookies（邮编: ${zipCode}）`);
 
   try {
+    const cookieDomain = domain.startsWith('.') ? domain : ('.' + domain);
+
+    await context.context.clearCookies()
+
+    await context.context.addCookies([
+      {
+        name: 'lc-main',
+        value: 'en_US',
+        domain: cookieDomain,
+        path: '/',
+        sameSite: 'Lax'
+      },
+      {
+        name: 'i18n-prefs',
+        value: 'USD',
+        domain: cookieDomain,
+        path: '/',
+        sameSite: 'Lax'
+      }
+    ]);
+
     // 访问 Amazon 站点
     const url = `https://www.${domain}`;
     logger.info(`${logPrefix} 正在访问 ${url}`);
 
     await page.goto(url, {
       waitUntil: 'domcontentloaded',
-      timeout: pageLoadTimeout
-    });
-
-    // 等待页面主要内容加载完成
-    await page.waitForLoadState('networkidle', { timeout: pageLoadTimeout }).catch(() => {
-      logger.info(`${logPrefix} 页面加载超时，继续执行...`);
+      timeout: selectorTimeout
     });
 
     // 处理可能出现的验证码
     await CommonUtils.handleCaptcha(page, logPrefix);
 
+    // 判断是否出现了 cookie 弹窗
+    const cookieAcceptButtonSelectors = [
+      "form#cos-banner input#sp-cc-accept[type='submit']"
+    ];
+    await waitAndClickElement(page, cookieAcceptButtonSelectors, logPrefix, 'cookie 接受按钮', false);
+
     // 等待顶部导航栏出现，确保页面完全加载
     try {
       await page.waitForSelector('header#navbar-main', { timeout: selectorTimeout, state: 'visible' });
-      logger.info(`${logPrefix} 顶部导航栏已加载，可以设置邮编`);
+      logger.info(`${logPrefix} 已找到顶部导航栏`);
     } catch (error) {
       throw new Error(`${logPrefix} 顶部导航栏未出现，页面可能加载失败`);
     }
 
-    // 尝试多个可能的邮编设置按钮选择器
+    // 等待页面主要内容加载完成
+    await page.waitForLoadState('domcontentloaded', { timeout: pageLoadTimeout }).catch(() => {
+      logger.info(`${logPrefix} 页面加载超时，继续执行...`);
+    });
+
+    await sleep(1000);
+
+    // 点击邮编设置按钮
     const locationButtonSelectors = [
       '#nav-global-location-popover-link',
       '#glow-ingress-block'
     ];
+    await waitAndClickElement(page, locationButtonSelectors, logPrefix, '邮编设置按钮');
 
-    let locationButton = null;
-    for (const selector of locationButtonSelectors) {
-      try {
-        locationButton = await page.waitForSelector(selector, { timeout: selectorTimeout, state: 'visible' });
-        if (locationButton) {
-          logger.info(`${logPrefix} 找到邮编设置按钮: ${selector}`);
-          break;
-        }
-      } catch (error) {
-        // 继续尝试下一个选择器
-      }
-    }
-
-    if (!locationButton) {
-      throw new Error(`${logPrefix} 未找到邮编设置按钮，请检查页面结构`);
-    }
-
-    // 点击邮编设置按钮
-    logger.info(`${logPrefix} 正在点击邮编设置按钮...`);
-    await locationButton.click();
+    // 处理可能出现的验证码
+    await CommonUtils.handleCaptcha(page, logPrefix);
 
     // 等待邮编输入框出现
     logger.info(`${logPrefix} 正在等待邮编输入框出现...`);
@@ -99,10 +152,12 @@ async function cookiesGetter(page, context, pluginOptions = {}) {
       const zipParts = String(zipCode).split(zipSeparator);
 
       logger.info(`${logPrefix} 正在输入邮编第一部分: ${zipParts[0]}`);
-      await zipInput0.fill(zipParts[0]);
+      await sleep(1000);
+      await zipInput0.fill(String(zipParts[0]));
 
       logger.info(`${logPrefix} 正在输入邮编第二部分: ${zipParts[1]}`);
-      await zipInput1.fill(zipParts[1]);
+      await sleep(1000);
+      await zipInput1.fill(String(zipParts[1]));
     } else {
       // 单输入框模式：等待单个输入框
       await page.waitForSelector('#GLUXZipUpdateInput', { timeout: selectorTimeout, state: 'visible' });
@@ -133,43 +188,34 @@ async function cookiesGetter(page, context, pluginOptions = {}) {
 
       // 输入邮编
       logger.info(`${logPrefix} 正在输入邮编 ${zipCode}...`);
+      await sleep(1000);
       await zipInput.fill(String(zipCode));
     }
 
-    // 等待确认按钮出现
-    const confirmButtonSelectors = [
-      '#GLUXZipUpdate',
-    ];
-
-    let confirmButton = null;
-    for (const selector of confirmButtonSelectors) {
-      try {
-        confirmButton = await page.waitForSelector(selector, { timeout: selectorTimeout, state: 'visible' });
-        if (confirmButton) {
-          logger.info(`${logPrefix} 找到确认按钮: ${selector}`);
-          break;
-        }
-      } catch (error) {
-        // 继续尝试下一个选择器
-      }
-    }
-
-    if (!confirmButton) {
-      throw new Error(`${logPrefix} 未找到确认按钮`);
-    }
+    // 点击设置按钮
+    const setButtonSelectors = ['#GLUXZipUpdate input[type="submit"]'];
+    await sleep(1000);
+    await waitAndClickElement(page, setButtonSelectors, logPrefix, '设置按钮');
 
     // 点击确认按钮
-    logger.info(`${logPrefix} 正在点击确认按钮...`);
-    await confirmButton.click();
+    const confirmButtonSelectors = [".a-popover-footer #GLUXConfirmClose"];
+    await sleep(1000);
+    await waitAndClickElement(page, confirmButtonSelectors, logPrefix, '确认按钮', false);
 
     // 等待页面更新完成
-    await page.waitForLoadState('networkidle', { timeout: selectorTimeout }).catch(() => {
+    await page.waitForLoadState('networkidle', { timeout: pageLoadTimeout }).catch(() => {
       logger.info(`${logPrefix} 页面更新超时，继续获取 cookies...`);
     });
 
+    // 如果 .GLUX_Popover 元素还是存在, 则表示错误了
+    const popover = await page.$('.GLUX_Popover');
+    if (popover) {
+      throw new Error(`${logPrefix} 邮编设置失败，请检查页面结构`);
+    }
+
     // 获取 cookies
     logger.info(`${logPrefix} 正在获取 cookies...`);
-    const cookies = await context.context.cookies();
+    const cookies = await context.context.cookies(`https://www.${domain}`);
 
     // 将 cookies 转换为字符串格式
     const cookieString = cookies
