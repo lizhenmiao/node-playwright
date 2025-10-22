@@ -95,7 +95,7 @@ async function amazonScraper(page, context, pluginOptions = {}) {
     });
 
     // 处理验证码
-    await handleCaptcha(page, context);
+    await CommonUtils.handleCaptcha(page, `任务 ${context.taskId}`);
 
     // 执行搜索
     await performSearch(page, context, keyword);
@@ -117,8 +117,19 @@ async function amazonScraper(page, context, pluginOptions = {}) {
         allResults.push(pageResults);
         logger.log(`任务 ${context.taskId}: 第 ${currentPage} 页数据提取成功，包含 ${pageResults.totalProducts} 个产品`);
 
+        const now = new Date();
+
+        const formatted = [
+          now.getFullYear(),
+          String(now.getMonth() + 1).padStart(2, '0'),
+          String(now.getDate()).padStart(2, '0'),
+          String(now.getHours()).padStart(2, '0'),
+          String(now.getMinutes()).padStart(2, '0'),
+          String(now.getSeconds()).padStart(2, '0'),
+        ].join('_');
+
         // 存储 html 到文件
-        await fs.writeFile(`./html_files/${context.taskId}-${zipCode.replace(/\s+/g, '_')}-${currentPage}-${keyword.replace(/\s+/g, '_')}-${Date.now()}.html`, pageResults.html);
+        await fs.writeFile(`./html_files/${crawlTaskId}-${zipCode.replace(/\s+/g, '_')}-${currentPage}-${keyword.replace(/\s+/g, '_')}-${formatted}.html`, pageResults.html);
       }
 
       // 如果不是最后一页，尝试翻页
@@ -199,40 +210,6 @@ async function amazonScraper(page, context, pluginOptions = {}) {
   }
 }
 
-/**
- * 处理验证码
- */
-async function handleCaptcha(page, context) {
-  logger.log(`任务 ${context.taskId}: 检查验证码...`);
-
-  try {
-    // 检查是否存在验证码表单
-    const captchaForm = await page.$('form[action="/errors/validateCaptcha"]');
-
-    if (captchaForm) {
-      logger.log(`任务 ${context.taskId}: 发现验证码，尝试点击按钮`);
-
-      // 查找按钮并点击
-      const button = await captchaForm.$('button, input[type="submit"]');
-      if (button) {
-        await button.click();
-        logger.log(`任务 ${context.taskId}: 已点击验证码按钮，等待页面刷新...`);
-
-        // 等待页面刷新
-        await page.waitForLoadState('domcontentloaded', { timeout: pageLoadTimeout });
-
-        logger.log(`任务 ${context.taskId}: 验证码页面刷新完成`);
-      } else {
-        logger.log(`任务 ${context.taskId}: 验证码表单中未找到按钮`);
-      }
-    } else {
-      logger.log(`任务 ${context.taskId}: 未发现验证码`);
-    }
-  } catch (error) {
-    logger.log(`任务 ${context.taskId}: 验证码处理出错: ${error.message}`);
-    // 验证码处理失败不抛出错误，继续执行
-  }
-}
 
 /**
  * 执行搜索

@@ -1,7 +1,6 @@
 const { chromium, firefox, webkit } = require('playwright');
 const EventEmitter = require('events');
 const CommonUtils = require('./commonUtils');
-const { cookiesConfig } = require('./cookiesConfig');
 const { logger } = require('./logger');
 
 /**
@@ -194,25 +193,31 @@ class ContextManager extends EventEmitter {
     });
 
     // 设置 Cookies - Playwright 在 Context 级别管理 Cookies
-    const { cookie } = cookiesConfig.find(item => String(item.zipCode) === String(options.zipCode) && pluginOptions.url.indexOf(item.domain) > -1) || {}
+    // 只有爬取任务（有 url 参数）才需要设置 cookies，获取 cookies 的任务不需要
+    if (pluginOptions.url && options.zipCode) {
+      // 动态引入避免循环依赖
+      const { getMergedCookiesConfig } = require('./cookiesHelper');
+      const cookiesConfig = await getMergedCookiesConfig();
+      const { cookie } = cookiesConfig.find(item => String(item.zipCode) === String(options.zipCode) && pluginOptions.url.indexOf(item.domain) > -1) || {}
 
-    if (cookie) {
-      if (typeof cookie === 'string') {
-        if (!options.cookieDomain) {
-          throw new Error('Cookie domain is required when using cookie string');
-        }
-        const parsedCookies = CommonUtils.parseCookieStringToObjects(cookie, options.cookieDomain);
-        await context.addCookies(parsedCookies);
-      } else if (Array.isArray(cookie)) {
-        for (const cookie of cookie) {
-          if (typeof cookie === 'string') {
-            if (!options.cookieDomain) {
-              throw new Error('Cookie domain is required when using cookie string');
+      if (cookie) {
+        if (typeof cookie === 'string') {
+          if (!options.cookieDomain) {
+            throw new Error('当使用 cookie string 时，cookie domain 是必需的');
+          }
+          const parsedCookies = CommonUtils.parseCookieStringToObjects(cookie, options.cookieDomain);
+          await context.addCookies(parsedCookies);
+        } else if (Array.isArray(cookie)) {
+          for (const cookie of cookie) {
+            if (typeof cookie === 'string') {
+              if (!options.cookieDomain) {
+                throw new Error('当使用 cookie string 时，cookie domain 是必需的');
+              }
+              const parsedCookies = CommonUtils.parseCookieStringToObjects(cookie, options.cookieDomain);
+              await context.addCookies(parsedCookies);
+            } else {
+              await context.addCookies([cookie]);
             }
-            const parsedCookies = CommonUtils.parseCookieStringToObjects(cookie, options.cookieDomain);
-            await context.addCookies(parsedCookies);
-          } else {
-            await context.addCookies([cookie]);
           }
         }
       }

@@ -1,4 +1,5 @@
 const UserAgent = require('user-agents');
+const { logger } = require('./logger');
 
 /**
  * 通用工具类，供ContextManager和HttpManager共同使用
@@ -58,7 +59,7 @@ class CommonUtils {
 
         // 只有提供了domain才设置domain和path
         if (domain) {
-          cookie.domain = domain;
+          cookie.domain = domain.startsWith('.') ? domain : ('.' + domain);
           cookie.path = '/';
         }
 
@@ -148,6 +149,43 @@ class CommonUtils {
     } catch (e) {
       // URL 解析失败，返回空或原字符串
       return '';
+    }
+  }
+
+  /**
+   * 处理验证码
+   * @param {Object} page - Playwright 页面对象
+   * @param {string} logPrefix - 日志前缀（如 "任务 123:" 或 "域名 amazon.com:"）
+   */
+  static async handleCaptcha(page, logPrefix) {
+    logger.info(`${logPrefix} 检查验证码...`);
+
+    try {
+      // 检查是否存在验证码表单
+      const captchaForm = await page.$('form[action="/errors/validateCaptcha"]');
+
+      if (captchaForm) {
+        logger.info(`${logPrefix} 发现验证码，尝试点击按钮`);
+
+        // 查找按钮并点击
+        const button = await captchaForm.$('button, input[type="submit"]');
+        if (button) {
+          await button.click();
+          logger.info(`${logPrefix} 已点击验证码按钮，等待页面刷新...`);
+
+          // 等待页面刷新
+          await page.waitForLoadState('domcontentloaded', { timeout: 30000 });
+
+          logger.info(`${logPrefix} 验证码页面刷新完成`);
+        } else {
+          logger.warn(`${logPrefix} 验证码表单中未找到按钮`);
+        }
+      } else {
+        logger.info(`${logPrefix} 未发现验证码`);
+      }
+    } catch (error) {
+      logger.warn(`${logPrefix} 验证码处理出错: ${error.message}`);
+      // 验证码处理失败不抛出错误，继续执行
     }
   }
 }

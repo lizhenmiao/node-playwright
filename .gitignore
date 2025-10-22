@@ -6,3 +6,6 @@ package-lock.json
 html_cache/
 html_files/
 logs/
+history_backup/
+.DS_Store
+cookies_storage.json

@@ -11,7 +11,7 @@ const cron = require('node-cron');
 const { extractProducts } = require('./test/extractor');
 const runAmazonScraper = require('./test/amazon');
 const axios = require('axios');
-const { cookiesConfig } = require('./utils/cookiesConfig');
+const { prepareCookies, getMergedCookiesConfig } = require('./utils/cookiesHelper');
 const CommonUtils = require('./utils/commonUtils');
 const { initConnection, closeConnection } = require('./database/connection');
 
@@ -36,6 +36,40 @@ async function executeScrapeTask() {
 
     logger.info(`调用接口获取到数据: ${JSON.stringify(data || [])}`);
 
+    // 提取所有需要的 URL
+    const urls = (data || []).map(item => item.amazonUrl);
+
+    // 准备和检查 cookies（如果过期则自动更新）
+    if (urls.length > 0) {
+      const cookiesStartTime = Date.now();
+
+      try {
+        const cookiesResult = await prepareCookies(urls);
+
+        if (cookiesResult.updated.length > 0) {
+          logger.info(`已更新以下域名的 cookies: ${cookiesResult.updated.join(', ')}`);
+        }
+
+        if (cookiesResult.skipped.length > 0) {
+          logger.info(`以下域名的 cookies 仍然有效，跳过更新: ${cookiesResult.skipped.join(', ')}`);
+        }
+
+        if (cookiesResult.failed.length > 0) {
+          logger.error(`以下域名的 cookies 更新失败: ${cookiesResult.failed.map(f => f.domain).join(', ')}`);
+          // 即使部分失败，也继续执行任务
+        }
+      } catch (cookiesError) {
+        logger.error('准备 cookies 时出错:', cookiesError.message, '将使用现有 cookies 继续执行任务');
+      } finally {
+        const cookiesTotalTime = Date.now() - cookiesStartTime;
+        const timeStr = CommonUtils.formatMilliseconds(cookiesTotalTime);
+        logger.info(`Cookies 准备阶段完成，总耗时: ${cookiesTotalTime}ms - ${timeStr}`);
+      }
+    }
+
+    // 获取合并后的 cookies 配置（优先使用更新后的 cookies）
+    const currentCookiesConfig = await getMergedCookiesConfig();
+
     const dataList = (data || []).map(item => {
       const { keywordText, amazonUrl, countryCode } = item;
 
@@ -43,7 +77,7 @@ async function executeScrapeTask() {
 
       // logger.info(`获取到域名: ${domain}`);
 
-      const { zipCode } = cookiesConfig.find(cookie => cookie.domain === domain);
+      const { zipCode } = currentCookiesConfig.find(cookie => cookie.domain === domain) || {};
       // logger.info(`获取到 zipCode: ${zipCode}`);
 
       return {
