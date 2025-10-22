@@ -198,7 +198,10 @@ async function cookiesGetter(page, context, pluginOptions = {}) {
     await waitAndClickElement(page, setButtonSelectors, logPrefix, '设置按钮');
 
     // 点击确认按钮
-    const confirmButtonSelectors = [".a-popover-footer #GLUXConfirmClose"];
+    const confirmButtonSelectors = [
+      ".a-popover-footer #GLUXConfirmClose",
+      "button#a-autoid-1-announce"
+    ];
     await sleep(1000);
     await waitAndClickElement(page, confirmButtonSelectors, logPrefix, '确认按钮', false);
 

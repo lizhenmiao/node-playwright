@@ -9,7 +9,9 @@ const proxyConfig = require('./proxyConfig');
 const COOKIES_STORAGE_PATH = path.join(__dirname, '../cookies_storage.json');
 
 // Cookies 有效期（20小时，单位：毫秒）
-const COOKIES_EXPIRY_TIME = 20 * 60 * 60 * 1000;
+// const COOKIES_EXPIRY_TIME = 20 * 60 * 60 * 1000;
+// 设置为两周
+const COOKIES_EXPIRY_TIME = 14 * 24 * 60 * 60 * 1000;
 
 /**
  * Cookies 管理器
