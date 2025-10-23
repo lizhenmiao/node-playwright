@@ -129,7 +129,7 @@ async function amazonScraper(page, context, pluginOptions = {}) {
         ].join('_');
 
         // 存储 html 到文件
-        await fs.writeFile(`./html_files/${crawlTaskId}-${zipCode.replace(/\s+/g, '_')}-${currentPage}-${keyword.replace(/\s+/g, '_')}-${formatted}.html`, pageResults.html);
+        await fs.writeFile(`./html_files/${crawlTaskId || context?.crawlTaskId || context?.taskId || 'unknown'}-${zipCode.replace(/\s+/g, '_')}-${currentPage}-${keyword.replace(/\s+/g, '_')}-${formatted}.html`, pageResults.html);
       }
 
       // 如果不是最后一页，尝试翻页
@@ -354,13 +354,13 @@ async function extractPageData(page, context, keyword, url, pageNumber) {
       // 检查是否有SP广告信息
       const hasSPAds = products.some(product => product.positionType === 'sp');
 
-      // 检查自然排名产品数量是否超过5个
+      // 检查自然排名产品数量是否超过 8 个
       const organicProducts = products.filter(product => product.positionType === 'organic');
-      const hasEnoughOrganic = organicProducts.length > 5;
+      const hasEnoughOrganic = organicProducts.length > 8;
 
       if ((hasSPAds && hasEnoughOrganic) || refreshCount >= maxRetries) {
         if (hasSPAds && hasEnoughOrganic) {
-          logger.log(`任务 ${context.taskId}: 第 ${pageNumber} 页发现SP广告信息且自然排名产品数量为 ${organicProducts.length} 个，满足停止条件`);
+          logger.log(`任务 ${context.taskId}: 第 ${pageNumber} 页发现SP广告信息且自然排名产品数量为 ${organicProducts.length} 个(超过 8 个)，满足停止条件`);
         } else if (refreshCount >= maxRetries) {
           logger.log(`任务 ${context.taskId}: 第 ${pageNumber} 页已达到最大重试次数，继续执行 (SP广告: ${hasSPAds ? '有' : '无'}, 自然排名: ${organicProducts.length}个)`);
         }
