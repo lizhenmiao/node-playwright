@@ -12,7 +12,7 @@ require('dotenv').config();
 // 数据库连接配置
 const config = {
   host: process.env.DB_HOST || 'localhost',
-  port: process.env.DB_PORT || 3306,
+  port: Number(process.env.DB_PORT) || 3306,
   database: process.env.DB_NAME || 'amazon_crawler',
   username: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || '',
@@ -24,12 +24,16 @@ const config = {
 
   // 连接池配置
   pool: {
-    max: 20,        // 最大连接数
-    min: 5,         // 最小连接数
-    acquire: 30000, // 获取连接超时时间(ms)
-    idle: 1800000,  // 连接空闲超时时间(ms) - 30分钟
-    evict: 3600000, // 连接回收时间(ms) - 1小时
-    handleDisconnects: true
+    // 最大连接数
+    max: 20,
+    // 最小连接数
+    min: 0,
+    // 获取连接超时时间(ms) - 30秒
+    acquire: 30 * 1000,
+    // 连接空闲超时时间(ms) - 25分钟
+    idle: 25 * 60 * 1000,
+    // 连接回收时间(ms) - 30秒
+    evict: 30 * 1000
   },
 
   // 重连配置
@@ -42,7 +46,6 @@ const config = {
       /ECONNREFUSED/,
       /TIMEOUT/,
       /ESOCKETTIMEDOUT/,
-      /EHOSTUNREACH/,
       /EPIPE/,
       /EAI_AGAIN/,
       /SequelizeConnectionError/,

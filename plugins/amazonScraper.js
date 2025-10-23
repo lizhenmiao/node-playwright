@@ -2,6 +2,7 @@ const { extractAmazonProductsFromHTML } = require('../utils/amazonExtractor');
 const CommonUtils = require('../utils/commonUtils');
 const { TaskOps, ProductOps } = require('../database/operations');
 const { initConnection, isConnectionActive } = require('../database/connection');
+const TaskIdManager = require('../utils/taskIdManager');
 const fs = require('fs').promises;
 const { logger } = require('../utils/logger');
 
@@ -51,36 +52,14 @@ async function amazonScraper(page, context, pluginOptions = {}) {
   try {
     const startTime = Date.now();
 
-    // 创建数据库任务记录（只在首次执行时创建，重试时复用）
-    try {
-      // 确保数据库连接已建立
-      if (!isConnectionActive()) {
-        await initConnection();
-      }
-
-      if (context.retryCount === 0) {
-        // 首次执行，创建新的数据库记录
-        const task = await TaskOps.create(keyword, zipCode, countryCode);
-        crawlTaskId = task.id;
-        context.crawlTaskId = crawlTaskId; // 保存到context中，供重试时使用
-        await TaskOps.start(crawlTaskId);
-      } else {
-        // 重试执行，复用之前的数据库记录
-        crawlTaskId = context.crawlTaskId;
-        if (crawlTaskId) {
-          await TaskOps.start(crawlTaskId); // 重新标记为运行状态
-          logger.info(`任务 ${context.taskId}: 重试使用现有数据库记录 ID=${crawlTaskId}`);
-        } else {
-          logger.warn(`任务 ${context.taskId}: 重试时未找到crawlTaskId，创建新记录`);
-          const task = await TaskOps.create(keyword, zipCode, countryCode);
-          crawlTaskId = task.id;
-          context.crawlTaskId = crawlTaskId;
-          await TaskOps.start(crawlTaskId);
-        }
-      }
-    } catch (dbError) {
-      logger.error(`任务 ${context.taskId}: 数据库操作失败 - ${dbError.message}`);
+    // 确保数据库连接已建立（提前初始化，避免在任务执行中才发现连接问题）
+    if (!isConnectionActive()) {
+      logger.info(`任务 ${context.taskId}: 初始化数据库连接...`);
+      await initConnection();
     }
+
+    // 获取或创建任务ID（使用新的管理器，具有重试机制）
+    crawlTaskId = await TaskIdManager.getOrCreateTaskId(context, keyword, zipCode, countryCode);
 
     // 存储所有页面的结果
     const allResults = [];
@@ -129,7 +108,7 @@ async function amazonScraper(page, context, pluginOptions = {}) {
         ].join('_');
 
         // 存储 html 到文件
-        await fs.writeFile(`./html_files/${crawlTaskId || context?.crawlTaskId || context?.taskId || 'unknown'}-${zipCode.replace(/\s+/g, '_')}-${currentPage}-${keyword.replace(/\s+/g, '_')}-${formatted}.html`, pageResults.html);
+        await fs.writeFile(`./html_files/${crawlTaskId || 'unknown'}-${zipCode.replace(/\s+/g, '_')}-${currentPage}-${keyword.replace(/\s+/g, '_')}-${formatted}.html`, pageResults.html);
       }
 
       // 如果不是最后一页，尝试翻页
@@ -165,11 +144,11 @@ async function amazonScraper(page, context, pluginOptions = {}) {
     };
 
     // 保存任务完成状态到数据库
+    await TaskIdManager.saveTaskCompletion(crawlTaskId, allResults.length, totalProducts, totalSponsored, context);
+
+    // 保存产品数据（如果有任务ID）
     if (crawlTaskId) {
       try {
-        await TaskOps.complete(crawlTaskId, allResults.length, totalProducts, totalSponsored);
-
-        // 保存产品数据
         const allProducts = [];
         for (const pageResult of allResults) {
           if (pageResult.products && Array.isArray(pageResult.products)) {
@@ -197,13 +176,7 @@ async function amazonScraper(page, context, pluginOptions = {}) {
       logger.log(`任务 ${context.taskId}: 不可重试或已达到最大重试次数`);
 
       // 保存任务失败状态到数据库
-      if (crawlTaskId) {
-        try {
-          await TaskOps.fail(crawlTaskId, error.message);
-        } catch (dbError) {
-          logger.error(`任务 ${context.taskId}: 保存失败状态失败 - ${dbError.message}`);
-        }
-      }
+      await TaskIdManager.saveTaskFailure(crawlTaskId, error.message, context);
     }
 
     context.failed(error, canRetry);
